@@ -1,19 +1,130 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>App de productos</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>VisionColor</title>
+    <meta name="description" content="Asistente de color para personas con daltonismo.">
+    <meta name="theme-color" content="#0e1116">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon-180.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="VisionColor">
     <link rel="stylesheet" href="style.css">
-    <script src="index.js" defer></script>
 </head>
 <body>
-    <h1>Nuestra tremenda App de productos Cambios</h1>
-    <div class="form-container">
-        <input type="text"  id="productName" placeholder="Nombre del producto">
-        <input type="number"  id="productPrice" placeholder="Precio del producto">
-        <button>Crear producto</button>
+
+<!-- ===== Inicio ===== -->
+<section id="screen-home" class="screen active">
+    <div class="brand">
+        <img src="icons/icon.svg" alt="" class="brand-logo">
+        <h1>VisionColor</h1>
+        <p class="tagline">Distingue los colores con la camara, calibrada para tu vista.</p>
     </div>
+
+    <div id="profile-card" class="card profile-card hidden">
+        <span class="profile-label">Tu calibracion</span>
+        <strong id="profile-text">-</strong>
+    </div>
+
+    <div class="home-actions">
+        <button id="btn-calibrate" class="btn btn-primary">Calibrar mi vista</button>
+        <button id="btn-open-camera" class="btn btn-secondary">Abrir camara</button>
+    </div>
+
+    <p class="disclaimer">
+        Esta app es una ayuda de accesibilidad, no un diagnostico medico.
+        Para una evaluacion real consulta a un profesional.
+    </p>
+</section>
+
+<!-- ===== Prueba de vision ===== -->
+<section id="screen-test" class="screen">
+    <header class="topbar">
+        <button class="icon-btn" data-go="home" aria-label="Volver">&#8592;</button>
+        <span class="topbar-title">Prueba de vision</span>
+        <span id="test-progress" class="topbar-meta">1 / 6</span>
+    </header>
+
+    <div class="test-body">
+        <p class="hint">Mira la imagen. &iquest;Que numero ves dentro de los puntos?</p>
+        <canvas id="plate" width="300" height="300" class="plate"></canvas>
+        <div class="keypad" id="keypad"></div>
+        <button id="btn-no-number" class="btn btn-ghost">No veo ningun numero</button>
+    </div>
+</section>
+
+<!-- ===== Ajuste / resultado ===== -->
+<section id="screen-adjust" class="screen">
+    <header class="topbar">
+        <button class="icon-btn" data-go="home" aria-label="Volver">&#8592;</button>
+        <span class="topbar-title">Ajuste de color</span>
+        <span class="topbar-meta"></span>
+    </header>
+
+    <div class="adjust-body">
+        <p id="adjust-result" class="result-text"></p>
+
+        <label class="field-label">Tipo de dificultad</label>
+        <div class="type-grid" id="type-grid">
+            <button class="type-btn" data-type="deutan">Rojo&ndash;verde<small>tipo deutan</small></button>
+            <button class="type-btn" data-type="protan">Rojo&ndash;verde<small>tipo protan</small></button>
+            <button class="type-btn" data-type="tritan">Azul&ndash;amarillo<small>tipo tritan</small></button>
+            <button class="type-btn" data-type="none">Ninguno<small>sin correccion</small></button>
+        </div>
+        <p class="hint small">Si una opcion de rojo-verde no mejora los colores, prueba la otra.</p>
+
+        <label class="field-label">
+            Intensidad de la correccion: <span id="severity-value">60%</span>
+        </label>
+        <input type="range" id="severity" min="0" max="100" value="60" class="slider">
+        <p class="hint small">Sube la intensidad hasta que en la imagen de abajo veas el numero
+            y los pares de colores se vean claramente distintos.</p>
+
+        <div class="preview-row">
+            <div class="preview-col">
+                <span class="preview-cap">Vista previa</span>
+                <canvas id="preview-plate" width="220" height="220" class="plate small"></canvas>
+            </div>
+            <div class="preview-col">
+                <span class="preview-cap">Pares de colores</span>
+                <div id="swatch-list" class="swatch-list"></div>
+            </div>
+        </div>
+
+        <button id="btn-save" class="btn btn-primary">Guardar y abrir camara</button>
+    </div>
+</section>
+
+<!-- ===== Camara ===== -->
+<section id="screen-camera" class="screen camera-screen">
+    <video id="video" playsinline muted autoplay></video>
+    <canvas id="view" class="view"></canvas>
+
+    <div id="camera-error" class="camera-error hidden"></div>
+
+    <div id="pick-label" class="pick-label hidden">
+        <span class="pick-swatch" id="pick-swatch"></span>
+        <span id="pick-name">-</span>
+    </div>
+
+    <header class="camera-top">
+        <button class="icon-btn light" data-go="home" aria-label="Volver">&#8592;</button>
+        <span id="camera-mode" class="camera-mode">Corregido</span>
+        <button class="icon-btn light" id="btn-flip" aria-label="Cambiar camara">&#8635;</button>
+    </header>
+
+    <div class="camera-hint" id="camera-hint">Toca la pantalla para conocer el nombre de un color.</div>
+
+    <div class="camera-bottom">
+        <button id="btn-compare" class="btn btn-pill">Ver original</button>
+        <button id="btn-recalibrate" class="btn btn-pill ghost">Calibrar</button>
+    </div>
+</section>
+
+<script src="color.js"></script>
+<script src="app.js"></script>
 </body>
 </html>

@@ -1,18 +1,17 @@
 {
-  "name": "stock-app",
-  "version": "1.0.0",
-  "description": "Aplicacion Full Stack Curso",
+  "name": "vision-color",
+  "version": "2.0.0",
+  "description": "Asistente de color para personas con daltonismo (PWA con camara en tiempo real)",
   "main": "app.js",
   "author": "Sebastian Gutierrez",
   "license": "MIT",
   "private": false,
   "scripts": {
+    "start": "node app.js",
     "dev": "nodemon app.js"
   },
   "dependencies": {
-    "dotenv": "^16.0.1",
-    "express": "^4.18.1",
-    "mongoose": "^6.3.6"
+    "express": "^4.18.1"
   },
   "devDependencies": {
     "nodemon": "^2.0.16"
