@@ -1,4 +1,4 @@
-const CACHE = 'visioncolor-v1'
+const CACHE = 'visioncolor-v2'
 const ASSETS = [
     './',
     'index.html',

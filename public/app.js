@@ -126,9 +126,16 @@
 
     function renderPlate() {
         var plate = CV.PLATES[testState.i]
-        CV.drawPlate($('plate'), plate)
-        $('test-progress').textContent =
-            testState.i + 1 + ' / ' + CV.PLATES.length
+        var canvas = $('plate')
+        CV.drawPlate(canvas, plate)
+        canvas.classList.remove('plate-anim')
+        void canvas.offsetWidth
+        canvas.classList.add('plate-anim')
+
+        var total = CV.PLATES.length
+        var step = testState.i + 1
+        $('test-progress').textContent = step + ' / ' + total
+        $('test-bar').style.width = (step / total) * 100 + '%'
     }
 
     function answerTest(value) {
@@ -144,25 +151,41 @@
     function finishTest() {
         var rgFail = 0
         var byFail = 0
+        var rgTotal = 0
+        var byTotal = 0
+        var controlFail = 0
         for (var i = 0; i < CV.PLATES.length; i++) {
             var plate = CV.PLATES[i]
             var correct = testState.answers[i] === plate.digit
+            if (plate.category === 'rg') rgTotal++
+            else if (plate.category === 'by') byTotal++
             if (!correct) {
                 if (plate.category === 'rg') rgFail++
                 else if (plate.category === 'by') byFail++
+                else if (plate.category === 'control') controlFail++
             }
         }
 
+        var rgRatio = rgTotal ? rgFail / rgTotal : 0
+        var byRatio = byTotal ? byFail / byTotal : 0
+
         var type = 'none'
         var severity = 0
-        if (rgFail > 0 && rgFail >= byFail) {
+        if (rgFail > 0 && rgRatio >= byRatio) {
             type = 'deutan'
-            severity = 0.35 + 0.5 * (rgFail / 3)
+            severity = 0.35 + 0.55 * rgRatio
         } else if (byFail > 0) {
             type = 'tritan'
-            severity = 0.35 + 0.5 * (byFail / 2)
+            severity = 0.35 + 0.55 * byRatio
         }
         if (severity > 0.95) severity = 0.95
+
+        var note =
+            controlFail > 0
+                ? ' Nota: no acertaste la lamina de control, que casi todos ' +
+                  'distinguen; para un resultado mas fiable repite la prueba ' +
+                  'con buena luz y mirando la pantalla de frente.'
+                : ''
 
         var msg
         if (type === 'none') {
@@ -185,7 +208,7 @@
 
         adjust.type = type
         adjust.severity = severity
-        openAdjust(msg)
+        openAdjust(msg + note)
     }
 
     // ---------- Ajuste manual ----------

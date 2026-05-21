@@ -123,10 +123,14 @@ window.CV = (function () {
     var PLATES = [
         { digit: '8', category: 'control', fig: figCtl, bg: bgCtl },
         { digit: '6', category: 'rg', fig: figRG, bg: bgRG },
-        { digit: '2', category: 'rg', fig: figRG, bg: bgRG },
         { digit: '5', category: 'by', fig: figBY, bg: bgBY },
+        { digit: '2', category: 'rg', fig: figRG, bg: bgRG },
         { digit: '9', category: 'rg', fig: figRG, bg: bgRG },
         { digit: '4', category: 'by', fig: figBY, bg: bgBY },
+        { digit: '7', category: 'rg', fig: figRG, bg: bgRG },
+        { digit: '3', category: 'rg', fig: figRG, bg: bgRG },
+        { digit: '6', category: 'by', fig: figBY, bg: bgBY },
+        { digit: '5', category: 'rg', fig: figRG, bg: bgRG },
     ]
 
     // Pares de colores confundibles para la vista previa del ajuste.
