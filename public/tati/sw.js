@@ -1,4 +1,4 @@
-const CACHE = 'tati-v3'
+const CACHE = 'tati-v4'
 const ASSETS = [
     './',
     'index.html',

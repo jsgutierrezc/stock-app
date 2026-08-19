@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Tati - Mi plan de mejora</title>
     <meta name="description" content="Dashboard personal para seguir un plan de mejora: cuerpo, creatividad y carrera.">
-    <meta name="theme-color" content="#f4f2ef">
+    <meta name="theme-color" content="#fff6f8">
     <link rel="manifest" href="manifest.json">
     <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="icons/apple-touch-icon-180.png">
@@ -128,35 +128,52 @@
         </div>
     </section>
 
-    <!-- ===== Progreso ===== -->
-    <section id="view-progreso" class="view">
+    <!-- ===== Heart ===== -->
+    <section id="view-heart" class="view">
         <header class="top">
             <div class="top-row">
                 <div class="page-title">
-                    <strong>Progreso</strong>
-                    <span>Cómo voy</span>
+                    <strong>Heart <span aria-hidden="true">&#128151;</span></strong>
+                    <span>El balance de tus tres dimensiones</span>
                 </div>
+            </div>
+            <div class="periodos" id="periodos" role="group" aria-label="Periodo">
+                <button data-periodo="7" class="on">7 días</button>
+                <button data-periodo="30">30 días</button>
+                <button data-periodo="90">90 días</button>
             </div>
         </header>
         <div class="scroll">
+            <section class="card balance-card" aria-labelledby="balance-heading">
+                <h2 id="balance-heading" class="sr-only">Balance entre dimensiones</h2>
+                <p class="hero-num" id="balance-num">0%</p>
+                <p class="hero-unit">de equilibrio</p>
+                <svg id="radar" viewBox="0 0 300 240" role="img" aria-labelledby="radar-desc"></svg>
+                <p id="radar-desc" class="sr-only"></p>
+                <p id="balance-msg" class="balance-msg"></p>
+            </section>
+
+            <section class="card">
+                <div class="card-head">
+                    <h2 class="card-title">Cada dimensión</h2>
+                    <span class="card-sub" id="dim-periodo"></span>
+                </div>
+                <div id="dimensiones" class="bars"></div>
+            </section>
+
             <div id="stats" class="stats"></div>
 
             <section class="card chart-card">
                 <div class="card-head">
-                    <h2 class="card-title">Cumplimiento diario</h2>
+                    <h2 class="card-title">Cumplimiento</h2>
                     <button id="btn-table" class="link-btn" aria-pressed="false">Ver tabla</button>
                 </div>
-                <p class="card-sub">Porcentaje de hábitos completados, últimos 14 días.</p>
+                <p class="card-sub" id="chart-sub">Porcentaje de hábitos completados.</p>
                 <div class="chart-wrap">
-                    <svg id="chart" viewBox="0 0 320 150" role="img" aria-label="Cumplimiento diario de los últimos 14 días"></svg>
+                    <svg id="chart" viewBox="0 0 320 150" role="img" aria-label="Cumplimiento por día"></svg>
                     <div id="tip" class="tip" role="status" aria-live="polite"></div>
                 </div>
                 <div id="chart-table" class="table-wrap hidden"></div>
-            </section>
-
-            <section class="card">
-                <h2 class="card-title">Por área, últimos 30 días</h2>
-                <div id="by-pillar" class="bars"></div>
             </section>
 
             <section class="card">
@@ -188,8 +205,8 @@
     <button class="tab" data-view="galeria" role="tab" aria-selected="false">
         <span class="tab-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="4"/><circle cx="8.5" cy="9.5" r="1.6"/><path d="M4 17l4.5-4.2 3.2 3 3-2.4L20 17.5"/></svg></span><span>Galería</span>
     </button>
-    <button class="tab" data-view="progreso" role="tab" aria-selected="false">
-        <span class="tab-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20V12M12 20V5M19 20v-6"/></svg></span><span>Progreso</span>
+    <button class="tab" data-view="heart" role="tab" aria-selected="false">
+        <span class="tab-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20.3s-7.5-4.4-7.5-9.4A4.2 4.2 0 0 1 12 8.2a4.2 4.2 0 0 1 7.5 2.7c0 5-7.5 9.4-7.5 9.4z"/></svg></span><span>Heart</span>
     </button>
 </nav>
 

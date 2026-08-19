@@ -8,7 +8,7 @@ const ENTRE_SEMANA = [1, 2, 3, 4, 5]
 const PILARES = [
     {
         id: 'cuerpo',
-        nombre: 'Cuerpo',
+        nombre: 'BODY',
         lema: 'Alimentación y ejercicio',
         color: '#199e70',
         tinte: '#e6f5ef',
@@ -16,16 +16,16 @@ const PILARES = [
     },
     {
         id: 'creatividad',
-        nombre: 'Creatividad',
-        lema: 'Bordar, pintar, leer',
+        nombre: 'SOUL',
+        lema: 'Creatividad y proyectos del alma',
         color: '#eb6834',
         tinte: '#fdeee7',
         icono: '\u{1F3A8}',
     },
     {
         id: 'carrera',
-        nombre: 'Carrera',
-        lema: 'Hoja de vida, portafolio y contenido',
+        nombre: 'TALENT',
+        lema: 'Trabajo, portafolio y contenido',
         color: '#2a78d6',
         tinte: '#e7f0fc',
         icono: '\u{1F4BC}',

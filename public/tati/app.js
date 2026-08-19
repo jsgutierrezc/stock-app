@@ -90,6 +90,7 @@ if (!estado) {
     guardar() // deja el plan inicial guardado desde la primera visita
 }
 let vista = 'hoy'
+let periodo = 7
 let fecha = hoyISO()
 let lunes = lunesDe(fecha)
 let verTabla = false
@@ -435,8 +436,8 @@ function renderMetas() {
             return (
                 '<section class="card goal">' +
                 '<div class="goal-head">' +
-                '<span class="dot" style="background:' + p.color + ';margin-top:7px"></span>' +
-                '<h3>' + esc(m.nombre) + '</h3>' +
+                '<h3>' + esc(m.nombre) +
+                ' <span class="chip-dim" style="color:' + p.color + ';background:' + p.tinte + '">' + esc(p.nombre) + '</span></h3>' +
                 '<span class="goal-count">' + hechos + '/' + m.pasos.length + '</span>' +
                 '<button class="mini-btn danger" data-accion="borrar-meta" data-id="' + m.id + '" aria-label="Borrar meta">&#10005;</button>' +
                 '</div>' +
@@ -449,7 +450,110 @@ function renderMetas() {
         .join('')
 }
 
-/* ---------------- vista: Progreso ---------------- */
+/* ---------------- vista: Heart ---------------- */
+
+// Resume un periodo: cuántos hábitos de cada dimensión se cumplieron.
+function resumenPeriodo(n) {
+    const dias = ultimosDias(n)
+    const porDim = {}
+    PILARES.forEach((p) => (porDim[p.id] = { hechos: 0, total: 0, pct: 0 }))
+    dias.forEach((d) => {
+        PILARES.forEach((p) => {
+            porDim[p.id].hechos += d.porPilar[p.id].hechos
+            porDim[p.id].total += d.porPilar[p.id].total
+        })
+    })
+    PILARES.forEach((p) => {
+        const c = porDim[p.id]
+        c.pct = c.total ? Math.round((c.hechos * 100) / c.total) : 0
+    })
+    return { dias, porDim }
+}
+
+// Qué tan parejas van las tres: la más floja comparada con la más fuerte.
+function equilibrioDe(valores) {
+    const alto = Math.max.apply(null, valores)
+    const bajo = Math.min.apply(null, valores)
+    return alto > 0 ? Math.round((bajo / alto) * 100) : 0
+}
+
+const ANGULOS = { cuerpo: -90, creatividad: 150, carrera: 30 }
+
+function dibujarRadar(porDim) {
+    const cx = 150
+    const cy = 136
+    const r = 82
+    const punto = (grados, fraccion) => {
+        const a = (grados * Math.PI) / 180
+        return [cx + r * fraccion * Math.cos(a), cy + r * fraccion * Math.sin(a)]
+    }
+    const triangulo = (fraccion) =>
+        PILARES.map((p) => punto(ANGULOS[p.id], fraccion).map((v) => v.toFixed(1)).join(',')).join(' ')
+
+    let html = ''
+    // rejilla: 25, 50, 75 y 100 por ciento
+    ;[0.25, 0.5, 0.75, 1].forEach((f) => {
+        html += '<polygon points="' + triangulo(f) + '" fill="none" stroke="var(--line)" stroke-width="1"/>'
+    })
+    PILARES.forEach((p) => {
+        const [x, y] = punto(ANGULOS[p.id], 1)
+        html += '<line x1="' + cx + '" y1="' + cy + '" x2="' + x.toFixed(1) + '" y2="' + y.toFixed(1) + '" stroke="var(--line)" stroke-width="1"/>'
+    })
+
+    // figura de los datos
+    const puntos = PILARES.map((p) => punto(ANGULOS[p.id], Math.max(porDim[p.id].pct, 0) / 100))
+    html +=
+        '<polygon points="' + puntos.map((q) => q.map((v) => v.toFixed(1)).join(',')).join(' ') + '" ' +
+        'fill="var(--brand)" fill-opacity="0.2" stroke="var(--brand-fuerte)" stroke-width="2" stroke-linejoin="round"/>'
+
+    PILARES.forEach((p, i) => {
+        const [x, y] = puntos[i]
+        html += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="5" fill="' + p.color + '" stroke="var(--surface)" stroke-width="2"/>'
+    })
+
+    // etiquetas por fuera, con nombre y porcentaje (nunca solo el color)
+    PILARES.forEach((p) => {
+        const [x, y] = punto(ANGULOS[p.id], 1.3)
+        const ancla = ANGULOS[p.id] === -90 ? 'middle' : ANGULOS[p.id] === 30 ? 'start' : 'end'
+        const dy = ANGULOS[p.id] === -90 ? -4 : 10
+        html +=
+            '<text x="' + x.toFixed(1) + '" y="' + (y + dy).toFixed(1) + '" text-anchor="' + ancla + '" font-size="13" font-weight="700" fill="var(--text)">' + p.nombre + '</text>' +
+            '<text x="' + x.toFixed(1) + '" y="' + (y + dy + 15).toFixed(1) + '" text-anchor="' + ancla + '" font-size="12" fill="var(--muted)">' + porDim[p.id].pct + '%</text>'
+    })
+    $('#radar').innerHTML = html
+}
+
+// Serie del gráfico: días sueltos hasta 30, semanas cuando el periodo es largo.
+function serieDelPeriodo(n) {
+    const dias = ultimosDias(n)
+    if (n <= 30) {
+        return dias.map((d) => {
+            const f = fechaDe(d.dia)
+            return {
+                pct: d.pct,
+                hechos: d.hechos,
+                total: d.total,
+                etiqueta: n <= 14 ? DIAS_CORTOS[f.getDay()] : String(f.getDate()),
+                titulo: f.getDate() + ' ' + MESES[f.getMonth()].slice(0, 3),
+            }
+        })
+    }
+    const semanas = []
+    for (let fin = dias.length; fin > 0; fin -= 7) {
+        const trozo = dias.slice(Math.max(0, fin - 7), fin)
+        const hechos = trozo.reduce((a, d) => a + d.hechos, 0)
+        const total = trozo.reduce((a, d) => a + d.total, 0)
+        const f = fechaDe(trozo[0].dia)
+        semanas.unshift({
+            pct: total ? Math.round((hechos * 100) / total) : 0,
+            hechos,
+            total,
+            etiqueta: f.getDate() + '/' + (f.getMonth() + 1),
+            titulo: 'semana del ' + f.getDate() + ' ' + MESES[f.getMonth()].slice(0, 3),
+        })
+    }
+    return semanas
+}
 
 function barraRedondeada(x, y, w, h, r) {
     const rr = Math.min(r, w / 2, h)
@@ -468,11 +572,11 @@ function dibujarGrafico(datos) {
     const arriba = 12
     const abajo = 120
     const alto = abajo - arriba
-    const hueco = 2
+    const hueco = datos.length > 20 ? 1 : 2
     const ancho = (der - izq - hueco * (datos.length - 1)) / datos.length
+    const cadaCuantas = datos.length > 16 ? Math.ceil(datos.length / 8) : 1
     let html = ''
 
-    // referencias discretas
     ;[0, 50, 100].forEach((v) => {
         const y = abajo - (v / 100) * alto
         html +=
@@ -484,19 +588,19 @@ function dibujarGrafico(datos) {
         const x = izq + i * (ancho + hueco)
         const h = (d.pct / 100) * alto
         const y = abajo - h
-        const f = fechaDe(d.dia)
         const texto = d.total === 0 ? 'sin hábitos' : d.pct + '% (' + d.hechos + '/' + d.total + ')'
-        const titulo = f.getDate() + ' ' + MESES[f.getMonth()].slice(0, 3) + ' - ' + texto
-        html += '<g class="bar" tabindex="0" role="listitem" aria-label="' + titulo + '" data-i="' + i + '">'
+        html += '<g class="bar" tabindex="0" role="listitem" aria-label="' + d.titulo + ' - ' + texto + '" data-i="' + i + '">'
         if (d.total === 0) {
             html += '<line x1="' + x + '" y1="' + abajo + '" x2="' + (x + ancho) + '" y2="' + abajo + '" stroke="var(--line)" stroke-width="2"/>'
         } else if (h < 1.5) {
             html += '<line x1="' + x + '" y1="' + abajo + '" x2="' + (x + ancho) + '" y2="' + abajo + '" stroke="var(--muted)" stroke-width="2"/>'
         } else {
-            html += '<path d="' + barraRedondeada(x, y, ancho, h, 4) + '" fill="var(--ink)"/>'
+            html += '<path d="' + barraRedondeada(x, y, ancho, h, 4) + '" fill="var(--serie)"/>'
         }
         html += '<rect class="bar-hit" x="' + x + '" y="' + arriba + '" width="' + ancho + '" height="' + (alto + 16) + '"/>'
-        html += '<text x="' + (x + ancho / 2) + '" y="' + (abajo + 14) + '" text-anchor="middle" font-size="9" fill="var(--muted)">' + DIAS_CORTOS[f.getDay()] + '</text>'
+        if ((datos.length - 1 - i) % cadaCuantas === 0) {
+            html += '<text x="' + (x + ancho / 2) + '" y="' + (abajo + 14) + '" text-anchor="middle" font-size="9" fill="var(--muted)">' + d.etiqueta + '</text>'
+        }
         html += '</g>'
     })
     svg.innerHTML = '<g role="list">' + html + '</g>'
@@ -504,10 +608,8 @@ function dibujarGrafico(datos) {
     const tip = $('#tip')
     const mostrar = (i) => {
         const d = datos[i]
-        const f = fechaDe(d.dia)
         tip.innerHTML =
-            f.getDate() + ' ' + MESES[f.getMonth()].slice(0, 3) + ' &middot; ' +
-            (d.total === 0 ? 'sin hábitos' : '<b>' + d.pct + '%</b> (' + d.hechos + '/' + d.total + ')')
+            d.titulo + ' &middot; ' + (d.total === 0 ? 'sin hábitos' : '<b>' + d.pct + '%</b> (' + d.hechos + '/' + d.total + ')')
         const caja = svg.getBoundingClientRect()
         const escala = caja.width / 320
         const centro = (izq + i * (ancho + hueco) + ancho / 2) * escala
@@ -528,64 +630,72 @@ function dibujarGrafico(datos) {
     svg.addEventListener('mouseleave', ocultar)
 }
 
-function renderProgreso() {
-    const dias14 = ultimosDias(14)
-    const dias30 = ultimosDias(30)
-    const conHabitos30 = dias30.filter((d) => d.total > 0)
-    const promedio7 = (() => {
-        const con = dias14.slice(-7).filter((d) => d.total > 0)
-        if (!con.length) return 0
-        return Math.round(con.reduce((a, d) => a + d.pct, 0) / con.length)
-    })()
-    const cumplidos30 = conHabitos30.filter((d) => d.pct >= UMBRAL_DIA).length
-    const totalHechos30 = dias30.reduce((a, d) => a + d.hechos, 0)
+function renderHeart() {
+    const { dias, porDim } = resumenPeriodo(periodo)
+    const valores = PILARES.map((p) => porDim[p.id].pct)
+    const equilibrio = equilibrioDe(valores)
+    const conHabitos = dias.filter((d) => d.total > 0)
+    const promedio = conHabitos.length
+        ? Math.round(conHabitos.reduce((a, d) => a + d.pct, 0) / conHabitos.length)
+        : 0
+    const cumplidos = conHabitos.filter((d) => d.pct >= UMBRAL_DIA).length
+    const floja = PILARES.slice().sort((a, b) => porDim[a.id].pct - porDim[b.id].pct)[0]
+
+    $('#balance-num').textContent = equilibrio + '%'
+    dibujarRadar(porDim)
+    $('#radar-desc').textContent =
+        'Equilibrio ' + equilibrio + ' por ciento. ' +
+        PILARES.map((p) => p.nombre + ' ' + porDim[p.id].pct + ' por ciento').join('. ')
+
+    let mensaje
+    if (!valores.some((v) => v > 0)) mensaje = 'Todavía no hay nada marcado en este periodo. Empieza por un hábito pequeño.'
+    else if (equilibrio >= 85) mensaje = 'Tus tres dimensiones van parejas. Así se ve el equilibrio.'
+    else if (equilibrio >= 60) mensaje = 'Vas bien: ' + floja.nombre + ' es la que pide un poquito más.'
+    else mensaje = floja.nombre + ' se quedó atrás en este periodo. Elige un solo hábito de esa dimensión para mañana.'
+    $('#balance-msg').textContent = mensaje
+
+    $('#dim-periodo').textContent = 'últimos ' + periodo + ' días'
+    $('#dimensiones').innerHTML = PILARES.map((p) => {
+        const c = porDim[p.id]
+        return (
+            '<div class="bar-row">' +
+            '<span class="label">' + esc(p.nombre) + '</span>' +
+            '<span class="bar-track"><span class="bar-fill" style="width:' + c.pct + '%;background:' + p.color + '"></span></span>' +
+            '<span class="value">' + c.pct + '%</span>' +
+            '</div>' +
+            '<p class="dim-detalle">' + esc(p.lema) + ' <span class="punto">·</span> ' + c.hechos + ' de ' + c.total + ' hábitos</p>'
+        )
+    }).join('')
 
     const tarjetas = [
         { v: rachaActual(), l: 'días de racha' },
         { v: mejorRacha(), l: 'mejor racha' },
-        { v: promedio7 + '%', l: 'promedio 7 días' },
-        { v: cumplidos30 + '/' + conHabitos30.length, l: 'días cumplidos (30)' },
+        { v: promedio + '%', l: 'promedio del periodo' },
+        { v: cumplidos + '/' + conHabitos.length, l: 'días cumplidos' },
     ]
     $('#stats').innerHTML = tarjetas
         .map((t) => '<div class="stat"><div class="stat-value">' + t.v + '</div><div class="stat-label">' + t.l + '</div></div>')
         .join('')
 
-    dibujarGrafico(dias14)
+    const serie = serieDelPeriodo(periodo)
+    $('#chart-sub').textContent =
+        periodo > 30 ? 'Porcentaje de hábitos completados, por semana.' : 'Porcentaje de hábitos completados, por día.'
+    dibujarGrafico(serie)
 
     $('#chart-table').innerHTML =
-        '<table><caption class="sr-only">Cumplimiento diario</caption><thead><tr><th>Día</th><th class="num">Cumplido</th><th class="num">Hábitos</th></tr></thead><tbody>' +
-        dias14
+        '<table><caption class="sr-only">Cumplimiento</caption><thead><tr><th>' +
+        (periodo > 30 ? 'Semana' : 'Día') + '</th><th class="num">Cumplido</th><th class="num">Hábitos</th></tr></thead><tbody>' +
+        serie
             .slice()
             .reverse()
-            .map((d) => {
-                const f = fechaDe(d.dia)
-                return (
-                    '<tr><td>' + DIAS_CORTOS[f.getDay()] + ' ' + f.getDate() + ' ' + MESES[f.getMonth()].slice(0, 3) + '</td>' +
+            .map(
+                (d) =>
+                    '<tr><td>' + d.titulo + '</td>' +
                     '<td class="num">' + (d.total ? d.pct + '%' : '-') + '</td>' +
                     '<td class="num">' + d.hechos + '/' + d.total + '</td></tr>'
-                )
-            })
+            )
             .join('') +
         '</tbody></table>'
-
-    $('#by-pillar').innerHTML =
-        PILARES.map((p) => {
-            let hechos = 0
-            let total = 0
-            dias30.forEach((d) => {
-                hechos += d.porPilar[p.id].hechos
-                total += d.porPilar[p.id].total
-            })
-            const pct = total ? Math.round((hechos * 100) / total) : 0
-            return (
-                '<div class="bar-row">' +
-                '<span class="label">' + esc(p.nombre) + '</span>' +
-                '<span class="bar-track"><span class="bar-fill" style="width:' + pct + '%;background:' + p.color + '"></span></span>' +
-                '<span class="value">' + pct + '%</span>' +
-                '</div>'
-            )
-        }).join('') +
-        '<p class="card-sub">' + totalHechos30 + ' hábitos completados en los últimos 30 días.</p>'
 }
 
 /* ---------------- frases ---------------- */
@@ -798,7 +908,7 @@ function render() {
     if (vista === 'planes') renderPlanes()
     if (vista === 'metas') renderMetas()
     if (vista === 'galeria') renderGaleria()
-    if (vista === 'progreso') renderProgreso()
+    if (vista === 'heart') renderHeart()
 }
 
 /* ---------------- modal ---------------- */
@@ -1159,6 +1269,14 @@ $('#modal-form').addEventListener('change', (ev) => {
     if (ev.target.name === 'tipo') {
         $('#f-cantidad').style.display = ev.target.value === 'cantidad' ? '' : 'none'
     }
+})
+
+$('#periodos').addEventListener('click', (ev) => {
+    const b = ev.target.closest('[data-periodo]')
+    if (!b) return
+    periodo = Number(b.dataset.periodo)
+    $('#periodos').querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b))
+    renderHeart()
 })
 
 $('#btn-table').addEventListener('click', () => {
