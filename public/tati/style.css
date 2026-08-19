@@ -534,9 +534,11 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
     border-radius: 14px;
     padding: 12px 14px;
     font-size: 15px;
+    width: 100%;
+    min-width: 0;
 }
 .field-row { display: flex; gap: 10px; }
-.field-row .field { flex: 1; }
+.field-row .field { flex: 1; min-width: 0; }
 .day-picker { display: flex; gap: 6px; }
 .day-picker button {
     flex: 1; padding: 10px 0;
