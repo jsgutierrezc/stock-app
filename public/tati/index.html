@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Tati - Mi plan de mejora</title>
+    <meta name="description" content="Dashboard personal para seguir un plan de mejora: cuerpo, creatividad y carrera.">
+    <meta name="theme-color" content="#0e1116">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon-180.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Tati">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<main id="main">
+    <!-- ===== Hoy ===== -->
+    <section id="view-hoy" class="view active">
+        <header class="app-bar">
+            <button class="icon-btn" id="day-prev" aria-label="Dia anterior">&#8592;</button>
+            <div class="app-bar-title">
+                <strong id="day-title">Hoy</strong>
+                <span id="day-sub" class="app-bar-sub">-</span>
+            </div>
+            <button class="icon-btn" id="day-next" aria-label="Dia siguiente">&#8594;</button>
+        </header>
+
+        <div class="scroll">
+            <section class="card ring-card" aria-labelledby="ring-heading">
+                <h2 id="ring-heading" class="sr-only">Avance del dia</h2>
+                <div class="ring-wrap">
+                    <svg id="ring" viewBox="0 0 200 200" role="img" aria-labelledby="ring-desc"></svg>
+                    <div class="ring-center">
+                        <span id="ring-pct" class="hero-number">0%</span>
+                        <span id="ring-caption" class="hero-caption">del dia</span>
+                    </div>
+                </div>
+                <p id="ring-desc" class="sr-only">Avance del dia por area.</p>
+                <ul id="ring-legend" class="legend"></ul>
+            </section>
+
+            <div id="pillars" class="pillars"></div>
+
+            <section class="card mood-card">
+                <h2 class="card-title">&iquest;Como me senti hoy?</h2>
+                <div id="mood" class="mood" role="group" aria-label="Estado de animo"></div>
+                <label class="sr-only" for="nota">Nota del dia</label>
+                <textarea id="nota" class="nota" rows="3" placeholder="Una linea sobre el dia, lo que aprendi o lo que quiero recordar."></textarea>
+            </section>
+
+            <div class="bottom-space"></div>
+        </div>
+    </section>
+
+    <!-- ===== Planes ===== -->
+    <section id="view-planes" class="view">
+        <header class="app-bar">
+            <div class="app-bar-title">
+                <strong>Mis planes</strong>
+                <span class="app-bar-sub">Toca un habito para editarlo</span>
+            </div>
+        </header>
+        <div class="scroll">
+            <div id="planes"></div>
+            <div class="bottom-space"></div>
+        </div>
+    </section>
+
+    <!-- ===== Metas ===== -->
+    <section id="view-metas" class="view">
+        <header class="app-bar">
+            <div class="app-bar-title">
+                <strong>Metas</strong>
+                <span class="app-bar-sub">Proyectos con pasos</span>
+            </div>
+            <button class="icon-btn" id="btn-add-goal" aria-label="Nueva meta">+</button>
+        </header>
+        <div class="scroll">
+            <div id="metas"></div>
+            <div class="bottom-space"></div>
+        </div>
+    </section>
+
+    <!-- ===== Progreso ===== -->
+    <section id="view-progreso" class="view">
+        <header class="app-bar">
+            <div class="app-bar-title">
+                <strong>Progreso</strong>
+                <span class="app-bar-sub">Como voy</span>
+            </div>
+        </header>
+        <div class="scroll">
+            <div id="stats" class="stats"></div>
+
+            <section class="card chart-card">
+                <div class="card-head">
+                    <h2 class="card-title">Cumplimiento diario</h2>
+                    <button id="btn-table" class="link-btn" aria-pressed="false">Ver tabla</button>
+                </div>
+                <p class="card-sub">Porcentaje de habitos completados, ultimos 14 dias.</p>
+                <div class="chart-wrap">
+                    <svg id="chart" viewBox="0 0 320 150" role="img" aria-label="Cumplimiento diario de los ultimos 14 dias"></svg>
+                    <div id="tip" class="tip" role="status" aria-live="polite"></div>
+                </div>
+                <div id="chart-table" class="table-wrap hidden"></div>
+            </section>
+
+            <section class="card">
+                <h2 class="card-title">Por area, ultimos 30 dias</h2>
+                <div id="by-pillar" class="bars"></div>
+            </section>
+
+            <section class="card">
+                <h2 class="card-title">Mis datos</h2>
+                <p class="card-sub">Todo se guarda solo en este dispositivo.</p>
+                <div class="row-actions">
+                    <button id="btn-export" class="btn btn-secondary">Exportar</button>
+                    <button id="btn-import" class="btn btn-secondary">Importar</button>
+                    <button id="btn-reset" class="btn btn-ghost danger">Reiniciar</button>
+                </div>
+                <input id="file-import" type="file" accept="application/json" class="hidden">
+            </section>
+
+            <div class="bottom-space"></div>
+        </div>
+    </section>
+</main>
+
+<nav class="tabbar" role="tablist" aria-label="Secciones">
+    <button class="tab active" data-view="hoy" role="tab" aria-selected="true"><span class="tab-ico">&#9679;</span>Hoy</button>
+    <button class="tab" data-view="planes" role="tab" aria-selected="false"><span class="tab-ico">&#9776;</span>Planes</button>
+    <button class="tab" data-view="metas" role="tab" aria-selected="false"><span class="tab-ico">&#9873;</span>Metas</button>
+    <button class="tab" data-view="progreso" role="tab" aria-selected="false"><span class="tab-ico">&#9650;</span>Progreso</button>
+</nav>
+
+<div id="modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-card">
+        <div class="modal-head">
+            <h2 id="modal-title">Titulo</h2>
+            <button class="icon-btn" id="modal-close" aria-label="Cerrar">&#10005;</button>
+        </div>
+        <form id="modal-form" class="modal-body"></form>
+    </div>
+</div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
