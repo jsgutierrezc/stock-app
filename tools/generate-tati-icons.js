@@ -54,15 +54,15 @@ const mezclar = (base, capa, a) => base + (capa - base) * a
 
 // Mismos colores que las tres areas del dashboard.
 const AREAS = [
-    { desde: -90, hasta: 30, col: [25, 158, 112] }, // cuerpo
-    { desde: 30, hasta: 150, col: [217, 89, 38] }, // creatividad
-    { desde: 150, hasta: 270, col: [57, 135, 229] }, // carrera
+    { desde: -90, hasta: 30, col: [231, 84, 128] }, // BODY
+    { desde: 30, hasta: 150, col: [14, 165, 233] }, // SOUL
+    { desde: 150, hasta: 270, col: [107, 63, 201] }, // TALENT
 ]
 const SEPARACION = 7 // grados de aire entre arcos
 
 function drawIcon(size, maskable) {
     const rgba = Buffer.alloc(size * size * 4)
-    const fondo = [14, 17, 22]
+    const fondo = [255, 246, 248]
     const cx = size / 2
     const cy = size / 2
     const radio = size * (maskable ? 0.245 : 0.31)

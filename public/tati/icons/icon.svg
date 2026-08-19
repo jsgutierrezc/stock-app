@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192" role="img" aria-label="Tati">
-    <rect width="192" height="192" rx="42" fill="#0e1116"/>
+    <rect width="192" height="192" rx="42" fill="#fff6f8"/>
     <g fill="none" stroke-width="18" stroke-linecap="round">
-    <path d="M99.66 36.11 A60 60 0 0 1 149.70 122.77" stroke="#199e70"/>
-    <path d="M146.03 129.12 A60 60 0 0 1 45.97 129.12" stroke="#d95926"/>
-    <path d="M42.30 122.77 A60 60 0 0 1 92.34 36.11" stroke="#3987e5"/>
+    <path d="M99.66 36.11 A60 60 0 0 1 149.70 122.77" stroke="#e75480"/>
+    <path d="M146.03 129.12 A60 60 0 0 1 45.97 129.12" stroke="#0ea5e9"/>
+    <path d="M42.30 122.77 A60 60 0 0 1 92.34 36.11" stroke="#6b3fc9"/>
     </g>
 </svg>
