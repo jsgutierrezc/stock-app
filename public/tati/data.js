@@ -10,24 +10,24 @@ const PILARES = [
         id: 'cuerpo',
         nombre: 'BODY',
         lema: 'Alimentación y ejercicio',
-        color: '#199e70',
-        tinte: '#e6f5ef',
+        color: '#e75480',
+        tinte: '#ffe6ee',
         icono: '\u{1F331}',
     },
     {
         id: 'creatividad',
         nombre: 'SOUL',
         lema: 'Creatividad y proyectos del alma',
-        color: '#eb6834',
-        tinte: '#fdeee7',
+        color: '#0ea5e9',
+        tinte: '#e2f4fd',
         icono: '\u{1F3A8}',
     },
     {
         id: 'carrera',
         nombre: 'TALENT',
         lema: 'Trabajo, portafolio y contenido',
-        color: '#2a78d6',
-        tinte: '#e7f0fc',
+        color: '#6b3fc9',
+        tinte: '#ece5fb',
         icono: '\u{1F4BC}',
     },
 ]
@@ -147,4 +147,11 @@ const FRASES = [
     'Estás a un hábito de volver al ritmo.',
     'Tu progreso no siempre se ve en el espejo; a veces se ve en el calendario.',
     'Hazte una promesa chiquita y cúmplela. Ese es todo el secreto.',
+]
+
+// Stickers para marcar las fotos de la galería.
+const STICKERS = [
+    '\u{1F497}', '\u{2728}', '\u{1F338}', '\u{2B50}', '\u{1F380}', '\u{1F9F5}',
+    '\u{1F3A8}', '\u{1F4DA}', '\u{1F957}', '\u{1F4AA}', '\u{1F3C3}', '\u{1F4BB}',
+    '\u{1F4F8}', '\u{1F308}', '\u{1F353}', '\u{2615}',
 ]

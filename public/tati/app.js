@@ -94,6 +94,7 @@ let periodo = 7
 let fecha = hoyISO()
 let lunes = lunesDe(fecha)
 let verTabla = false
+let ultimoPop = null
 
 /* ---------------- cálculos ---------------- */
 
@@ -280,6 +281,7 @@ function filaHabito(h, dia) {
     const meta = objetivo(h)
     const ok = cumplido(h, v)
     const p = pilarDe(h.pilar)
+    const pop = h.id === ultimoPop ? ' pop' : ''
     let control
     if (h.tipo === 'cantidad') {
         control =
@@ -290,7 +292,7 @@ function filaHabito(h, dia) {
             '</div>'
     } else {
         control =
-            '<button class="check' + (ok ? ' on' : '') + '" data-accion="alternar" data-id="' + h.id + '"' +
+            '<button class="check' + (ok ? ' on' : '') + pop + '" data-accion="alternar" data-id="' + h.id + '"' +
             (ok ? ' style="background:' + p.color + ';border-color:' + p.color + '"' : '') +
             ' aria-pressed="' + ok + '" aria-label="' + esc(h.nombre) + '">&#10003;</button>'
     }
@@ -479,7 +481,14 @@ function equilibrioDe(valores) {
 
 const ANGULOS = { cuerpo: -90, creatividad: 150, carrera: 30 }
 
-function dibujarRadar(porDim) {
+function caraDelBalance(equilibrio, valores) {
+    if (!valores.some((v) => v > 0)) return 'dormida'
+    if (equilibrio >= 85) return 'feliz'
+    if (equilibrio >= 60) return 'contenta'
+    return 'triste'
+}
+
+function dibujarRadar(porDim, animo) {
     const cx = 150
     const cy = 136
     const r = 82
@@ -490,7 +499,10 @@ function dibujarRadar(porDim) {
     const triangulo = (fraccion) =>
         PILARES.map((p) => punto(ANGULOS[p.id], fraccion).map((v) => v.toFixed(1)).join(',')).join(' ')
 
-    let html = ''
+    let html =
+        '<defs><linearGradient id="grad-dim" x1="0" y1="0" x2="1" y2="1">' +
+        PILARES.map((p, i) => '<stop offset="' + (i * 50) + '%" stop-color="' + p.color + '"/>').join('') +
+        '</linearGradient></defs>'
     // rejilla: 25, 50, 75 y 100 por ciento
     ;[0.25, 0.5, 0.75, 1].forEach((f) => {
         html += '<polygon points="' + triangulo(f) + '" fill="none" stroke="var(--line)" stroke-width="1"/>'
@@ -504,7 +516,9 @@ function dibujarRadar(porDim) {
     const puntos = PILARES.map((p) => punto(ANGULOS[p.id], Math.max(porDim[p.id].pct, 0) / 100))
     html +=
         '<polygon points="' + puntos.map((q) => q.map((v) => v.toFixed(1)).join(',')).join(' ') + '" ' +
-        'fill="var(--brand)" fill-opacity="0.2" stroke="var(--brand-fuerte)" stroke-width="2" stroke-linejoin="round"/>'
+        'fill="url(#grad-dim)" fill-opacity="0.22" stroke="var(--serie)" stroke-width="1.8" stroke-linejoin="round" stroke-opacity="0.6"/>'
+
+    html += caritaKawaii(cx, cy, animo)
 
     PILARES.forEach((p, i) => {
         const [x, y] = puntos[i]
@@ -521,6 +535,33 @@ function dibujarRadar(porDim) {
             '<text x="' + x.toFixed(1) + '" y="' + (y + dy + 15).toFixed(1) + '" text-anchor="' + ancla + '" font-size="12" fill="var(--muted)">' + porDim[p.id].pct + '%</text>'
     })
     $('#radar').innerHTML = html
+}
+
+// Carita del centro: cambia según qué tan parejas van las tres dimensiones.
+function caritaKawaii(cx, cy, animo) {
+    const OJOS = {
+        feliz: '<path d="M-11 -1 q4.5 -6 9 0"/><path d="M2 -1 q4.5 -6 9 0"/>',
+        dormida: '<path d="M-10.5 -2 h7"/><path d="M3.5 -2 h7"/>',
+        otros: '<circle cx="-6.5" cy="-2.5" r="2.2" fill="var(--text)" stroke="none"/>' +
+               '<circle cx="6.5" cy="-2.5" r="2.2" fill="var(--text)" stroke="none"/>',
+    }
+    const BOCAS = {
+        feliz: '<path d="M-7 4.5 q7 7.5 14 0"/>',
+        contenta: '<path d="M-5 5 q5 4.5 10 0"/>',
+        dormida: '<path d="M-3.5 6 q3.5 3 7 0"/>',
+        triste: '<path d="M-5 8.5 q5 -4.5 10 0"/>',
+    }
+    const ojos = OJOS[animo] || OJOS.otros
+    const boca = BOCAS[animo] || BOCAS.contenta
+    const rubor = PILARES[0].color
+    return (
+        '<g transform="translate(' + cx + ',' + cy + ')">' +
+        '<circle r="23" fill="var(--surface)" opacity="0.9"/>' +
+        '<circle cx="-12.5" cy="3.5" r="4.3" fill="' + rubor + '" opacity="0.32"/>' +
+        '<circle cx="12.5" cy="3.5" r="4.3" fill="' + rubor + '" opacity="0.32"/>' +
+        '<g fill="none" stroke="var(--text)" stroke-width="2" stroke-linecap="round">' +
+        ojos + boca + '</g></g>'
+    )
 }
 
 // Serie del gráfico: días sueltos hasta 30, semanas cuando el periodo es largo.
@@ -642,7 +683,7 @@ function renderHeart() {
     const floja = PILARES.slice().sort((a, b) => porDim[a.id].pct - porDim[b.id].pct)[0]
 
     $('#balance-num').textContent = equilibrio + '%'
-    dibujarRadar(porDim)
+    dibujarRadar(porDim, caraDelBalance(equilibrio, valores))
     $('#radar-desc').textContent =
         'Equilibrio ' + equilibrio + ' por ciento. ' +
         PILARES.map((p) => p.nombre + ' ' + porDim[p.id].pct + ' por ciento').join('. ')
@@ -780,6 +821,7 @@ function miniatura(f, grupo) {
         '<button class="miniatura" data-accion="ver-foto" data-id="' + f.id + '">' +
         '<img src="' + urlDe(f.blob, grupo) + '" alt="' + esc(f.nota || 'Foto del ' + f.dia) + '">' +
         (grupo === 'galeria' ? '<span class="dia-chip">' + fechaDe(f.dia).getDate() + '</span>' : '') +
+        (f.sticker ? '<span class="sticker" aria-hidden="true">' + f.sticker + '</span>' : '') +
         (p ? '<span class="marca" style="background:' + p.color + '"></span>' : '') +
         '</button>'
     )
@@ -845,8 +887,9 @@ function abrirVisor(id) {
     const fe = fechaDe(f.dia)
     $('#visor-img').src = urlsVivas.visor
     $('#visor-img').alt = f.nota || 'Foto del ' + f.dia
-    $('#visor-fecha').textContent =
-        DIAS_NOMBRE[fe.getDay()] + ' ' + fe.getDate() + ' de ' + MESES[fe.getMonth()] + ' de ' + fe.getFullYear()
+    $('#visor-fecha').innerHTML =
+        (f.sticker ? '<span class="sticker-grande" aria-hidden="true">' + f.sticker + '</span>' : '') +
+        esc(DIAS_NOMBRE[fe.getDay()] + ' ' + fe.getDate() + ' de ' + MESES[fe.getMonth()] + ' de ' + fe.getFullYear())
     $('#visor-nota').textContent = f.nota || (f.pilar ? pilarDe(f.pilar).nombre : '')
     $('#visor').classList.remove('hidden')
 }
@@ -869,13 +912,18 @@ function modalNuevaFoto(blob) {
             PILARES.map((p) => '<option value="' + p.id + '">' + esc(p.nombre) + '</option>').join('') +
             '</select></div></div>' +
             '<div class="field"><label for="f-fnota">Nota</label><input id="f-fnota" name="nota" maxlength="90" placeholder="¿Qué avance muestra esta foto?"></div>' +
+            '<div class="field"><label>Sticker</label><div class="stickers" id="f-stickers">' +
+            STICKERS.map((e, i) => '<button type="button" data-sticker="' + e + '"' + (i === 0 ? ' class="on"' : '') + ' aria-label="Sticker ' + (i + 1) + '">' + e + '</button>').join('') +
+            '</div></div>' +
             '<button type="submit" class="btn btn-primary">Guardar foto</button>',
         (form) => {
+            const elegido = $('#f-stickers').querySelector('button.on')
             const foto = {
                 id: uid(),
                 dia: form.dia.value || fecha,
                 pilar: form.pilar.value,
                 nota: form.nota.value.trim(),
+                sticker: elegido ? elegido.dataset.sticker : '',
                 creado: Date.now(),
                 blob,
             }
@@ -1003,6 +1051,38 @@ function nuevaMeta() {
 
 /* ---------------- acciones ---------------- */
 
+// Lluvia de corazones cuando el día queda completo.
+function celebrar() {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const capa = document.createElement('div')
+    capa.className = 'corazones'
+    capa.setAttribute('aria-hidden', 'true')
+    const dulces = ['\u{1F497}', '\u2728', '\u{1F338}', '\u{1F496}', '\u2B50']
+    for (let i = 0; i < 10; i++) {
+        const s = document.createElement('span')
+        s.textContent = dulces[i % dulces.length]
+        s.style.left = 8 + ((i * 29) % 80) + '%'
+        s.style.setProperty('--dx', (((i * 37) % 70) - 35) + 'px')
+        s.style.setProperty('--giro', (((i * 53) % 60) - 30) + 'deg')
+        s.style.animationDelay = (i * 0.07).toFixed(2) + 's'
+        capa.appendChild(s)
+    }
+    document.body.appendChild(capa)
+    setTimeout(() => capa.remove(), 2600)
+}
+
+// Marca el hábito para que rebote y celebra si el día quedó completo.
+function despuesDeMarcar(id, antes) {
+    ultimoPop = id
+    setTimeout(() => {
+        ultimoPop = null
+    }, 500)
+    guardar()
+    renderHoy()
+    const ahora = progresoDia(fecha)
+    if (ahora.total > 0 && ahora.pct === 100 && antes < 100) celebrar()
+}
+
 function paso(h) {
     const meta = objetivo(h)
     if (meta >= 1000) return 500
@@ -1014,6 +1094,7 @@ function paso(h) {
 function cambiarValor(id, delta) {
     const h = estado.habitos.find((x) => x.id === id)
     if (!h) return
+    const antes = progresoDia(fecha).pct
     const r = regEditable(fecha)
     const actual = r.valores[id] || 0
     if (h.tipo === 'cantidad') {
@@ -1021,18 +1102,17 @@ function cambiarValor(id, delta) {
     } else {
         r.valores[id] = actual >= 1 ? 0 : 1
     }
-    guardar()
-    renderHoy()
+    despuesDeMarcar(id, antes)
 }
 
 function alternarHabito(id) {
     const h = estado.habitos.find((x) => x.id === id)
     if (!h) return
+    const antes = progresoDia(fecha).pct
     const r = regEditable(fecha)
     const actual = r.valores[id] || 0
     r.valores[id] = cumplido(h, actual) ? 0 : objetivo(h)
-    guardar()
-    renderHoy()
+    despuesDeMarcar(id, antes)
 }
 
 function exportar() {
@@ -1264,6 +1344,12 @@ $('#modal-form').addEventListener('submit', (ev) => {
 $('#modal-form').addEventListener('click', (ev) => {
     const dia = ev.target.closest('[data-dia]')
     if (dia) dia.classList.toggle('on')
+    const sticker = ev.target.closest('[data-sticker]')
+    if (sticker) {
+        const yaEstaba = sticker.classList.contains('on')
+        $('#f-stickers').querySelectorAll('button').forEach((b) => b.classList.remove('on'))
+        if (!yaEstaba) sticker.classList.add('on') // tocarlo otra vez lo quita
+    }
 })
 $('#modal-form').addEventListener('change', (ev) => {
     if (ev.target.name === 'tipo') {

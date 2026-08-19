@@ -6,7 +6,7 @@
     --line: #f7e2ea;
     --text: #3b2b32;
     --muted: #8a6f77;
-    --serie: #b4577f;          /* barras de una sola serie */
+    --serie: #6f5a63;          /* cumplimiento total: no es ninguna dimensión */
     --brand: #ffa9c6;          /* rosa suave, para rellenos */
     --brand-ink: #e0518a;      /* rosa sólido, con texto blanco encima */
     --brand-fuerte: #d94a83;   /* trazos sobre fondo claro */
@@ -14,9 +14,9 @@
     --danger: #d0455c;
 
     /* Paleta categórica de las tres dimensiones (validada sobre blanco). */
-    --cuerpo: #199e70;
-    --creatividad: #eb6834;
-    --carrera: #2a78d6;
+    --cuerpo: #e75480;         /* BODY */
+    --creatividad: #0ea5e9;    /* SOUL */
+    --carrera: #6b3fc9;        /* TALENT */
 
     --radius: 28px;
     --radius-sm: 20px;
@@ -141,7 +141,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .wday.sel .num { background: var(--brand-ink); color: #fff; font-weight: 700; }
 .wday .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--surface-3); }
 .wday .dot.on { background: var(--brand); }
-.wday .dot.full { background: var(--brand-ink); }
+.wday .dot.full { background: var(--serie); }
 .wday[disabled] { opacity: .35; cursor: default; }
 
 /* ---------- Tarjetas ---------- */
@@ -593,3 +593,55 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
     .modal { align-items: center; }
     .modal-card { border-radius: 28px; }
 }
+
+/* ---------- Dulzura ---------- */
+@keyframes pop {
+    0% { transform: scale(.72); }
+    55% { transform: scale(1.18); }
+    100% { transform: scale(1); }
+}
+.pop { animation: pop .28s cubic-bezier(.34, 1.56, .64, 1) both; }
+
+@keyframes subir {
+    0% { transform: translate(0, 0) scale(.6) rotate(0deg); opacity: 0; }
+    18% { opacity: 1; }
+    100% { transform: translate(var(--dx), -190px) scale(1.15) rotate(var(--giro)); opacity: 0; }
+}
+.corazones {
+    position: fixed; inset: 0;
+    pointer-events: none;
+    z-index: 40;
+}
+.corazones span {
+    position: absolute;
+    bottom: 34%;
+    font-size: 26px;
+    animation: subir 1.7s ease-out forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pop, .corazones span { animation: none; }
+    .corazones { display: none; }
+}
+
+/* Stickers sobre las fotos */
+.miniatura .sticker {
+    position: absolute; right: 5px; bottom: 4px;
+    font-size: 19px;
+    filter: drop-shadow(0 1px 3px rgba(0, 0, 0, .45));
+}
+.tira-fotos .miniatura .sticker { font-size: 16px; }
+.visor-info .sticker-grande { font-size: 22px; margin-right: 6px; vertical-align: -2px; }
+
+.stickers {
+    display: flex; flex-wrap: wrap; gap: 6px;
+}
+.stickers button {
+    width: 40px; height: 40px;
+    border: 2px solid transparent;
+    border-radius: 14px;
+    background: var(--surface-2);
+    font-size: 19px; line-height: 1;
+    cursor: pointer;
+}
+.stickers button.on { border-color: var(--brand-ink); background: #fff; }
