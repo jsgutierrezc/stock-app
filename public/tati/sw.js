@@ -1,9 +1,10 @@
-const CACHE = 'tati-v2'
+const CACHE = 'tati-v3'
 const ASSETS = [
     './',
     'index.html',
     'style.css',
     'data.js',
+    'fotos.js',
     'app.js',
     'manifest.json',
     'icons/icon.svg',

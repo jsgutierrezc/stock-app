@@ -113,3 +113,38 @@ const ANIMOS = [
     { valor: 4, icono: '\u{1F60A}', texto: 'Bien' },
     { valor: 5, icono: '\u{1F929}', texto: 'Encendida' },
 ]
+
+// Frases para el módulo motivacional. Son frases propias, sin autor: la idea
+// es que acompañen el día, no citar a nadie. Tati puede agregar las suyas.
+const FRASES = [
+    'Hoy no tiene que ser perfecto, solo tiene que empezar.',
+    'Un hábito pequeño repetido vence a un plan enorme abandonado.',
+    'Tu cuerpo escucha todo lo que le prometes: cúmplele algo hoy.',
+    'Avanzar despacio sigue siendo avanzar.',
+    'Lo que haces cuando nadie mira es lo que te construye.',
+    'No estás empezando de cero, estás empezando con experiencia.',
+    'Las manos ocupadas en crear calman la cabeza.',
+    'Bordar, pintar o leer también es productividad: es cuidado.',
+    'Tu hoja de vida cuenta una historia; hoy escribe un renglón más.',
+    'El portafolio no se termina de un tirón, se termina de a ratos.',
+    'Publicar imperfecto enseña más que planear perfecto.',
+    'Comparar tu capítulo 3 con el capítulo 20 de alguien más no es justo contigo.',
+    'Tomar agua, dormir y moverte no son lujos, son la base.',
+    'Cuando no tengas ganas, baja la meta, no la abandones.',
+    'Dos minutos cuentan. Empezar es la parte difícil.',
+    'La disciplina es quererte a largo plazo.',
+    'Descansar también es parte del plan.',
+    'Nadie construye una rutina en un día, pero se pierde en uno.',
+    'Hazlo por la mujer que vas a ser en seis meses.',
+    'Terminar algo pequeño hoy te da impulso para mañana.',
+    'Tu creatividad no necesita permiso ni público.',
+    'Un día flojo no borra una semana buena.',
+    'Escribe lo que aprendiste: la memoria olvida, el cuaderno no.',
+    'Enviar el mensaje, mandar la postulación, tocar la puerta. Eso mueve.',
+    'La constancia no es hacer mucho, es no desaparecer.',
+    'Elige el hábito más fácil de la lista y empieza por ahí.',
+    'Lo que mides, mejora. Lo que celebras, se repite.',
+    'Estás a un hábito de volver al ritmo.',
+    'Tu progreso no siempre se ve en el espejo; a veces se ve en el calendario.',
+    'Hazte una promesa chiquita y cúmplela. Ese es todo el secreto.',
+]

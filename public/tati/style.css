@@ -170,6 +170,98 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .row-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
 .row-actions .btn { flex: 1; min-width: 108px; }
 
+/* ---------- Frase del dia ---------- */
+.frase-card {
+    background: linear-gradient(135deg, #ffd873, var(--brand));
+    border-radius: var(--radius);
+    padding: 18px 18px 12px;
+    box-shadow: var(--sombra);
+}
+.frase-texto {
+    font-size: 17px;
+    line-height: 1.4;
+    font-weight: 600;
+    letter-spacing: -0.2px;
+    color: var(--brand-ink);
+}
+.frase-acciones { display: flex; align-items: center; gap: 4px; margin-top: 10px; }
+.frase-btn {
+    width: 34px; height: 34px;
+    border: none; border-radius: 12px;
+    background: rgba(255, 255, 255, .5);
+    color: var(--brand-ink);
+    font-size: 16px; line-height: 1;
+    cursor: pointer;
+}
+.frase-btn.on { background: var(--brand-ink); color: #fff; }
+.frase-link {
+    margin-left: auto;
+    background: none; border: none;
+    color: var(--brand-ink);
+    font-size: 13px; font-weight: 600;
+    cursor: pointer; padding: 6px;
+}
+.frase-mia { display: flex; align-items: center; gap: 8px; padding: 9px 0; border-top: 1px solid var(--line); font-size: 14.5px; }
+.frase-mia span { flex: 1; }
+
+/* ---------- Fotos ---------- */
+.tira-fotos { display: flex; gap: 8px; overflow-x: auto; padding: 12px 0 2px; }
+.tira-fotos:empty::after {
+    content: 'Todavía no hay fotos de este día.';
+    color: var(--muted); font-size: 13px;
+}
+.tira-fotos .miniatura { width: 82px; height: 82px; flex: none; }
+
+.miniatura {
+    padding: 0; border: none; border-radius: 14px;
+    overflow: hidden; background: var(--surface-2);
+    cursor: pointer; position: relative;
+}
+.miniatura img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.miniatura .dia-chip {
+    position: absolute; top: 6px; right: 7px;
+    font-size: 11px; font-weight: 700; color: #fff;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, .6);
+}
+.miniatura .marca {
+    position: absolute; left: 6px; bottom: 6px;
+    width: 8px; height: 8px; border-radius: 3px;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, .75);
+}
+
+.galeria-mes { margin-bottom: 22px; }
+.galeria-mes h2 {
+    font-size: 15px; font-weight: 600;
+    margin-bottom: 10px; padding-left: 4px;
+}
+.galeria-mes h2::first-letter { text-transform: uppercase; }
+.galeria-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.galeria-grid .miniatura { aspect-ratio: 1; width: 100%; }
+.galeria-vacia { text-align: center; padding: 40px 20px; color: var(--muted); }
+.galeria-vacia p { margin-bottom: 16px; font-size: 14px; }
+
+.visor {
+    position: fixed; inset: 0; z-index: 30;
+    background: #14120f;
+    display: flex; flex-direction: column;
+}
+.visor-barra { display: flex; justify-content: flex-end; padding: calc(env(safe-area-inset-top) + 10px) 14px 6px; }
+.visor-barra .round-btn { background: rgba(255, 255, 255, .15); color: #fff; }
+#visor-img { flex: 1; min-height: 0; width: 100%; object-fit: contain; }
+.visor-info {
+    background: var(--surface);
+    border-radius: 24px 24px 0 0;
+    padding: 16px 18px calc(16px + env(safe-area-inset-bottom));
+}
+.visor-info strong { font-size: 15px; }
+.visor-info strong::first-letter { text-transform: uppercase; }
+.visor-info p { color: var(--muted); font-size: 14px; margin-top: 2px; min-height: 20px; }
+
+.previa {
+    width: 100%; max-height: 220px; object-fit: cover;
+    border-radius: 16px; display: block;
+}
+
 /* ---------- Tarjeta principal del dia ---------- */
 .hero-card { text-align: center; padding: 22px 18px 18px; }
 .hero-num { font-size: 34px; font-weight: 700; letter-spacing: -1.2px; font-variant-numeric: tabular-nums; }

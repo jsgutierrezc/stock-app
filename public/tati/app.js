@@ -53,6 +53,9 @@ function semilla() {
             pasos: m.pasos.map((t) => ({ id: uid(), texto: t, hecho: false })),
         })),
         registro: {},
+        frasesFav: [],
+        frasesPropias: [],
+        fraseDelDia: {},
     }
 }
 
@@ -63,6 +66,9 @@ function cargar() {
         const s = JSON.parse(crudo)
         if (!s || !Array.isArray(s.habitos) || !Array.isArray(s.metas)) return null
         if (!s.registro || typeof s.registro !== 'object') s.registro = {}
+        if (!Array.isArray(s.frasesFav)) s.frasesFav = []
+        if (!Array.isArray(s.frasesPropias)) s.frasesPropias = []
+        if (!s.fraseDelDia || typeof s.fraseDelDia !== 'object') s.fraseDelDia = {}
         return s
     } catch (e) {
         console.warn('No se pudo leer el almacenamiento local', e)
@@ -354,6 +360,8 @@ function renderHoy() {
             '" aria-pressed="' + (r.animo === a.valor) + '" title="' + a.texto + '" aria-label="' + a.texto + '">' + a.icono + '</button>'
     ).join('')
     $('#nota').value = r.nota || ''
+    renderFrase()
+    renderFotosDia()
 }
 
 /* ---------------- vista: Planes ---------------- */
@@ -580,6 +588,203 @@ function renderProgreso() {
         '<p class="card-sub">' + totalHechos30 + ' hábitos completados en los últimos 30 días.</p>'
 }
 
+/* ---------------- frases ---------------- */
+
+const poolFrases = () => FRASES.concat(estado.frasesPropias || [])
+
+function indiceFrase(dia) {
+    const pool = poolFrases()
+    if (!pool.length) return 0
+    const guardado = estado.fraseDelDia[dia]
+    if (typeof guardado === 'number') return guardado % pool.length
+    let h = 0
+    for (let i = 0; i < dia.length; i++) h = (h * 31 + dia.charCodeAt(i)) >>> 0
+    return h % pool.length
+}
+
+function renderFrase() {
+    const pool = poolFrases()
+    const texto = pool.length ? pool[indiceFrase(fecha)] : ''
+    $('#frase-texto').textContent = texto
+    const fav = (estado.frasesFav || []).includes(texto)
+    const boton = $('#frase-fav')
+    boton.classList.toggle('on', fav)
+    boton.setAttribute('aria-pressed', String(fav))
+    boton.innerHTML = fav ? '&#9829;' : '&#9825;'
+}
+
+function modalFrases() {
+    const mias = estado.frasesPropias || []
+    const favs = estado.frasesFav || []
+    const lista = (titulo, arreglo, accion) =>
+        '<div><p class="card-sub" style="margin-bottom:4px">' + titulo + '</p>' +
+        (arreglo.length
+            ? arreglo
+                  .map(
+                      (t, i) =>
+                          '<div class="frase-mia"><span>' + esc(t) + '</span>' +
+                          '<button type="button" class="mini-btn" data-accion="' + accion + '" data-i="' + i + '" aria-label="Quitar">&#10005;</button></div>'
+                  )
+                  .join('')
+            : '<p class="card-sub">Nada por aquí todavía.</p>') +
+        '</div>'
+    abrirModal(
+        'Mis frases',
+        '<div class="field"><label for="f-frase">Escribe una frase tuya</label>' +
+            '<input id="f-frase" name="frase" maxlength="140" placeholder="La que te sirva a ti"></div>' +
+            '<button type="submit" class="btn btn-primary">Agregar</button>' +
+            lista('Guardadas', favs, 'quitar-fav') +
+            lista('Mías', mias, 'quitar-mia'),
+        (form) => {
+            const texto = form.frase.value.trim()
+            if (!texto) return false
+            estado.frasesPropias.push(texto)
+            guardar()
+            modalFrases()
+            return false // el modal se queda abierto mostrando la lista
+        }
+    )
+}
+
+/* ---------------- fotos ---------------- */
+
+const urlsVivas = { dia: [], galeria: [], visor: null }
+const cacheFotos = {}
+let diaFotosPintado = null
+let fotoVisible = null
+
+function revocar(grupo) {
+    urlsVivas[grupo].forEach((u) => URL.revokeObjectURL(u))
+    urlsVivas[grupo] = []
+}
+function urlDe(blob, grupo) {
+    const u = URL.createObjectURL(blob)
+    urlsVivas[grupo].push(u)
+    return u
+}
+
+function miniatura(f, grupo) {
+    cacheFotos[f.id] = f
+    const p = f.pilar ? pilarDe(f.pilar) : null
+    return (
+        '<button class="miniatura" data-accion="ver-foto" data-id="' + f.id + '">' +
+        '<img src="' + urlDe(f.blob, grupo) + '" alt="' + esc(f.nota || 'Foto del ' + f.dia) + '">' +
+        (grupo === 'galeria' ? '<span class="dia-chip">' + fechaDe(f.dia).getDate() + '</span>' : '') +
+        (p ? '<span class="marca" style="background:' + p.color + '"></span>' : '') +
+        '</button>'
+    )
+}
+
+function renderFotosDia(forzar) {
+    const cont = $('#fotos-dia')
+    if (!cont || (!forzar && diaFotosPintado === fecha)) return
+    diaFotosPintado = fecha
+    fotosDelDia(fecha)
+        .then((lista) => {
+            revocar('dia')
+            cont.innerHTML = lista.sort((a, b) => b.creado - a.creado).map((f) => miniatura(f, 'dia')).join('')
+        })
+        .catch(() => {
+            cont.innerHTML = '<p class="card-sub">No se pudieron cargar las fotos en este navegador.</p>'
+        })
+}
+
+function renderGaleria() {
+    listarFotos()
+        .then((lista) => {
+            revocar('galeria')
+            if (!lista.length) {
+                $('#galeria-sub').textContent = 'Tu archivo de avances'
+                $('#galeria').innerHTML =
+                    '<div class="galeria-vacia"><p>Aquí se guardan tus fotos del día a día: el bordado que avanzó, el plato que preparaste, la caminata.</p>' +
+                    '<button class="btn btn-primary" data-accion="agregar-foto">Agregar la primera foto</button></div>'
+                return
+            }
+            const bytes = lista.reduce((a, f) => a + (f.blob.size || 0), 0)
+            const peso = bytes >= 1024 * 1024 ? (bytes / (1024 * 1024)).toFixed(1) + ' MB' : Math.round(bytes / 1024) + ' KB'
+            $('#galeria-sub').textContent =
+                lista.length + (lista.length === 1 ? ' foto' : ' fotos') + ' · ' + peso
+            const meses = []
+            lista.forEach((f) => {
+                const clave = f.dia.slice(0, 7)
+                let grupo = meses.find((m) => m.clave === clave)
+                if (!grupo) meses.push((grupo = { clave, fotos: [] }))
+                grupo.fotos.push(f)
+            })
+            $('#galeria').innerHTML = meses
+                .map((m) => {
+                    const [anio, mes] = m.clave.split('-').map(Number)
+                    return (
+                        '<section class="galeria-mes"><h2>' + MESES[mes - 1] + ' ' + anio + '</h2>' +
+                        '<div class="galeria-grid">' + m.fotos.map((f) => miniatura(f, 'galeria')).join('') + '</div></section>'
+                    )
+                })
+                .join('')
+        })
+        .catch(() => {
+            $('#galeria').innerHTML = '<p class="card-sub">Este navegador no permite guardar fotos.</p>'
+        })
+}
+
+function abrirVisor(id) {
+    const f = cacheFotos[id]
+    if (!f) return
+    fotoVisible = f
+    if (urlsVivas.visor) URL.revokeObjectURL(urlsVivas.visor)
+    urlsVivas.visor = URL.createObjectURL(f.blob)
+    const fe = fechaDe(f.dia)
+    $('#visor-img').src = urlsVivas.visor
+    $('#visor-img').alt = f.nota || 'Foto del ' + f.dia
+    $('#visor-fecha').textContent =
+        DIAS_NOMBRE[fe.getDay()] + ' ' + fe.getDate() + ' de ' + MESES[fe.getMonth()] + ' de ' + fe.getFullYear()
+    $('#visor-nota').textContent = f.nota || (f.pilar ? pilarDe(f.pilar).nombre : '')
+    $('#visor').classList.remove('hidden')
+}
+function cerrarVisor() {
+    $('#visor').classList.add('hidden')
+    $('#visor-img').removeAttribute('src')
+    if (urlsVivas.visor) URL.revokeObjectURL(urlsVivas.visor)
+    urlsVivas.visor = null
+    fotoVisible = null
+}
+
+function modalNuevaFoto(blob) {
+    const previa = URL.createObjectURL(blob)
+    abrirModal(
+        'Nueva foto',
+        '<img src="' + previa + '" alt="" class="previa">' +
+            '<div class="field-row">' +
+            '<div class="field"><label for="f-fdia">Día</label><input id="f-fdia" name="dia" type="date" value="' + fecha + '" max="' + hoyISO() + '"></div>' +
+            '<div class="field"><label for="f-fpilar">Área</label><select id="f-fpilar" name="pilar"><option value="">Sin área</option>' +
+            PILARES.map((p) => '<option value="' + p.id + '">' + esc(p.nombre) + '</option>').join('') +
+            '</select></div></div>' +
+            '<div class="field"><label for="f-fnota">Nota</label><input id="f-fnota" name="nota" maxlength="90" placeholder="¿Qué avance muestra esta foto?"></div>' +
+            '<button type="submit" class="btn btn-primary">Guardar foto</button>',
+        (form) => {
+            const foto = {
+                id: uid(),
+                dia: form.dia.value || fecha,
+                pilar: form.pilar.value,
+                nota: form.nota.value.trim(),
+                creado: Date.now(),
+                blob,
+            }
+            guardarFoto(foto)
+                .then(() => {
+                    URL.revokeObjectURL(previa)
+                    if (vista === 'galeria') renderGaleria()
+                    else renderFotosDia(true)
+                })
+                .catch(() => alert('No se pudo guardar la foto.'))
+            return true
+        }
+    )
+}
+
+function elegirFoto() {
+    $('#file-foto').click()
+}
+
 /* ---------------- render general ---------------- */
 
 function render() {
@@ -592,6 +797,7 @@ function render() {
     if (vista === 'hoy') renderHoy()
     if (vista === 'planes') renderPlanes()
     if (vista === 'metas') renderMetas()
+    if (vista === 'galeria') renderGaleria()
     if (vista === 'progreso') renderProgreso()
 }
 
@@ -767,6 +973,7 @@ document.addEventListener('click', (ev) => {
     if (dia && !dia.disabled) {
         fecha = dia.dataset.dia
         renderHoy()
+        renderFotosDia(true)
         return
     }
 
@@ -820,6 +1027,18 @@ document.addEventListener('click', (ev) => {
             guardar()
             renderMetas()
         }
+    } else if (accion === 'agregar-foto') {
+        elegirFoto()
+    } else if (accion === 'ver-foto') {
+        abrirVisor(id)
+    } else if (accion === 'quitar-fav') {
+        estado.frasesFav.splice(Number(el.dataset.i), 1)
+        guardar()
+        modalFrases()
+    } else if (accion === 'quitar-mia') {
+        estado.frasesPropias.splice(Number(el.dataset.i), 1)
+        guardar()
+        modalFrases()
     } else if (accion === 'borrar-meta') {
         if (!confirm('¿Borrar esta meta y sus pasos?')) return
         estado.metas = estado.metas.filter((x) => x.id !== id)
@@ -829,6 +1048,7 @@ document.addEventListener('click', (ev) => {
 })
 
 document.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Escape' && !$('#visor').classList.contains('hidden')) cerrarVisor()
     if (ev.key === 'Escape' && !$('#modal').classList.contains('hidden')) cerrarModal()
     if (ev.key !== 'Enter' && ev.key !== ' ') return
     if (!(ev.target instanceof Element)) return
@@ -869,6 +1089,56 @@ $('#nota').addEventListener('input', (ev) => {
     }, 400)
 })
 
+$('#frase-otra').addEventListener('click', () => {
+    const pool = poolFrases()
+    if (pool.length < 2) return
+    estado.fraseDelDia[fecha] = (indiceFrase(fecha) + 1) % pool.length
+    guardar()
+    renderFrase()
+})
+$('#frase-fav').addEventListener('click', () => {
+    const texto = $('#frase-texto').textContent
+    if (!texto) return
+    const i = estado.frasesFav.indexOf(texto)
+    if (i >= 0) estado.frasesFav.splice(i, 1)
+    else estado.frasesFav.push(texto)
+    guardar()
+    renderFrase()
+})
+$('#frase-guardadas').addEventListener('click', modalFrases)
+
+$('#file-foto').addEventListener('change', (ev) => {
+    const archivo = ev.target.files[0]
+    ev.target.value = ''
+    if (!archivo) return
+    comprimirImagen(archivo)
+        .then(modalNuevaFoto)
+        .catch((e) => alert(e.message || 'No se pudo procesar la imagen.'))
+})
+$('#visor-close').addEventListener('click', cerrarVisor)
+$('#visor-descargar').addEventListener('click', () => {
+    if (!fotoVisible) return
+    const a = document.createElement('a')
+    a.href = urlsVivas.visor
+    a.download = 'tati-' + fotoVisible.dia + '.jpg'
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+})
+$('#visor-borrar').addEventListener('click', () => {
+    if (!fotoVisible) return
+    if (!confirm('¿Borrar esta foto? No se puede deshacer.')) return
+    const id = fotoVisible.id
+    borrarFoto(id)
+        .then(() => {
+            delete cacheFotos[id]
+            cerrarVisor()
+            if (vista === 'galeria') renderGaleria()
+            else renderFotosDia(true)
+        })
+        .catch(() => alert('No se pudo borrar la foto.'))
+})
+
 $('#btn-add-goal').addEventListener('click', nuevaMeta)
 $('#modal-close').addEventListener('click', cerrarModal)
 $('#modal').addEventListener('click', (ev) => {
@@ -904,7 +1174,7 @@ $('#file-import').addEventListener('change', (ev) => {
     ev.target.value = ''
 })
 $('#btn-reset').addEventListener('click', () => {
-    if (!confirm('Esto borra hábitos, metas e historial y vuelve al plan inicial. ¿Continuar?')) return
+    if (!confirm('Esto borra hábitos, metas e historial y vuelve al plan inicial. Las fotos de la galería no se tocan. ¿Continuar?')) return
     estado = semilla()
     guardar()
     render()
