@@ -2,11 +2,11 @@
    Todo el estado vive en localStorage; no hay servidor ni cuentas. */
 
 const KEY = 'tati.plan.v1'
-const UMBRAL_DIA = 70 // % de habitos para dar el dia por cumplido
+const UMBRAL_DIA = 70 // % de hábitos para dar el día por cumplido
 const DIAS_CORTOS = ['D', 'L', 'M', 'X', 'J', 'V', 'S']
-const DIAS_NOMBRE = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado']
+const DIAS_NOMBRE = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado']
 const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
-const VACIO = { valores: {}, animo: 0, nota: '' }
+const VACIO = { valores: {}, animo: 0, nota: '', cerrado: false }
 
 /* ---------------- utilidades ---------------- */
 
@@ -31,6 +31,12 @@ function sumarDias(txt, n) {
     const f = fechaDe(txt)
     f.setDate(f.getDate() + n)
     return iso(f)
+}
+// Lunes de la semana a la que pertenece la fecha.
+function lunesDe(txt) {
+    const f = fechaDe(txt)
+    const desplazamiento = (f.getDay() + 6) % 7
+    return sumarDias(txt, -desplazamiento)
 }
 const pilarDe = (id) => PILARES.find((p) => p.id === id) || PILARES[0]
 
@@ -79,9 +85,10 @@ if (!estado) {
 }
 let vista = 'hoy'
 let fecha = hoyISO()
+let lunes = lunesDe(fecha)
 let verTabla = false
 
-/* ---------------- calculos ---------------- */
+/* ---------------- cálculos ---------------- */
 
 function habitosDelDia(dia) {
     const wd = fechaDe(dia).getDay()
@@ -91,7 +98,7 @@ function reg(dia) {
     return estado.registro[dia] || VACIO
 }
 function regEditable(dia) {
-    if (!estado.registro[dia]) estado.registro[dia] = { valores: {}, animo: 0, nota: '' }
+    if (!estado.registro[dia]) estado.registro[dia] = { valores: {}, animo: 0, nota: '', cerrado: false }
     return estado.registro[dia]
 }
 function valor(dia, habitoId) {
@@ -135,7 +142,7 @@ function rachaActual() {
         const p = progresoDia(cursor)
         if (p.total === 0) {
             cursor = sumarDias(cursor, -1)
-            continue // un dia sin habitos programados no rompe la racha
+            continue // un día sin hábitos programados no rompe la racha
         }
         if (p.pct < UMBRAL_DIA) break
         n++
@@ -183,18 +190,42 @@ function tituloDia() {
     if (fecha === hoy) return 'Hoy'
     if (fecha === sumarDias(hoy, -1)) return 'Ayer'
     const f = fechaDe(fecha)
-    return DIAS_NOMBRE[f.getDay()].charAt(0).toUpperCase() + DIAS_NOMBRE[f.getDay()].slice(1)
+    return f.getDate() + ' de ' + MESES[f.getMonth()].slice(0, 3)
+}
+
+function renderSemana() {
+    const hoy = hoyISO()
+    const dias = []
+    for (let i = 0; i < 7; i++) dias.push(sumarDias(lunes, i))
+    $('#week-days').innerHTML = dias
+        .map((d) => {
+            const f = fechaDe(d)
+            const prog = progresoDia(d)
+            const futuro = d > hoy
+            let clase = 'wday'
+            if (d === fecha) clase += ' sel'
+            else if (d === hoy) clase += ' hoy'
+            let punto = 'dot'
+            if (!futuro && prog.hechos > 0) punto += prog.pct >= UMBRAL_DIA ? ' full' : ' on'
+            return (
+                '<button class="' + clase + '" data-dia="' + d + '"' + (futuro ? ' disabled' : '') +
+                ' aria-label="' + DIAS_NOMBRE[f.getDay()] + ' ' + f.getDate() + '"' +
+                ' aria-pressed="' + (d === fecha) + '">' +
+                '<span class="letra">' + DIAS_CORTOS[f.getDay()] + '</span>' +
+                '<span class="num">' + f.getDate() + '</span>' +
+                '<span class="' + punto + '"></span></button>'
+            )
+        })
+        .join('')
+    $('#week-next').disabled = sumarDias(lunes, 7) > hoy
 }
 
 function polar(cx, cy, r, grados) {
     const a = (grados * Math.PI) / 180
     return [cx + r * Math.cos(a), cy + r * Math.sin(a)]
 }
-function arco(a0, a1, color, ancho) {
-    const cx = 100
-    const cy = 100
-    const r = 76
-    if (a1 - a0 < 0.6) return ''
+function arco(a0, a1, color, ancho, cx, cy, r) {
+    if (a1 - a0 < 0.8) return ''
     const fin = Math.min(a1, a0 + 359.9)
     const [x0, y0] = polar(cx, cy, r, a0)
     const [x1, y1] = polar(cx, cy, r, fin)
@@ -206,24 +237,32 @@ function arco(a0, a1, color, ancho) {
     )
 }
 
-function dibujarAnillo(prog) {
-    const svg = $('#ring')
+// Arco plano y ancho, al estilo de un medidor: cada área ocupa la porción
+// que le corresponde según cuántos hábitos tiene programados ese día.
+function dibujarMedidor(prog) {
+    const cx = 160
+    const cy = 430
+    const r = 400
+    const desde = 250
+    const hasta = 290
+    const ancho = 11
+    const svg = $('#gauge')
     const activos = PILARES.filter((p) => (prog.porPilar[p.id] || {}).total > 0)
     if (!activos.length) {
-        svg.innerHTML = arco(-90, 269, 'var(--line)', 14)
+        svg.innerHTML = arco(desde, hasta, 'var(--surface-2)', ancho, cx, cy, r)
         return
     }
-    const separacion = 5 // grados de aire entre areas
+    const separacion = 4
     let html = ''
-    let ang = -90
+    let ang = desde
     activos.forEach((p) => {
         const casilla = prog.porPilar[p.id]
-        const porcion = (casilla.total / prog.total) * 360
+        const porcion = (casilla.total / prog.total) * (hasta - desde)
         const inicio = ang + separacion / 2
         const largo = Math.max(porcion - separacion, 0)
-        html += arco(inicio, inicio + largo, 'var(--line)', 14)
+        html += arco(inicio, inicio + largo, 'var(--surface-2)', ancho, cx, cy, r)
         const f = casilla.hechos / casilla.total
-        if (f > 0) html += arco(inicio, inicio + largo * f, p.color, 14)
+        if (f > 0) html += arco(inicio, inicio + largo * f, p.color, ancho, cx, cy, r)
         ang += porcion
     })
     svg.innerHTML = html
@@ -233,24 +272,25 @@ function filaHabito(h, dia) {
     const v = valor(dia, h.id)
     const meta = objetivo(h)
     const ok = cumplido(h, v)
-    const color = pilarDe(h.pilar).color
+    const p = pilarDe(h.pilar)
     let control
     if (h.tipo === 'cantidad') {
         control =
             '<div class="stepper">' +
             '<button data-accion="menos" data-id="' + h.id + '" aria-label="Restar en ' + esc(h.nombre) + '">&#8722;</button>' +
-            '<span class="value">' + v + ' / ' + meta + '</span>' +
+            '<span class="value"' + (ok ? ' style="color:' + p.color + '"' : '') + '>' + v + ' / ' + meta + '</span>' +
             '<button data-accion="mas" data-id="' + h.id + '" aria-label="Sumar en ' + esc(h.nombre) + '">+</button>' +
             '</div>'
     } else {
         control =
             '<button class="check' + (ok ? ' on' : '') + '" data-accion="alternar" data-id="' + h.id + '"' +
-            (ok ? ' style="background:' + color + ';border-color:' + color + '"' : '') +
+            (ok ? ' style="background:' + p.color + ';border-color:' + p.color + '"' : '') +
             ' aria-pressed="' + ok + '" aria-label="' + esc(h.nombre) + '">&#10003;</button>'
     }
     const detalle = h.tipo === 'cantidad' ? esc(h.unidad || '') : ok ? 'Hecho' : 'Pendiente'
     return (
         '<div class="habit' + (ok ? ' done' : '') + '">' +
+        '<span class="thumb" style="background:' + p.tinte + '" aria-hidden="true">' + (h.icono || p.icono) + '</span>' +
         '<div class="habit-main" data-accion="alternar" data-id="' + h.id + '" role="button" tabindex="0">' +
         '<span class="habit-name">' + esc(h.nombre) + '</span>' +
         '<span class="habit-meta">' + detalle + '</span>' +
@@ -260,47 +300,54 @@ function filaHabito(h, dia) {
 
 function renderHoy() {
     const prog = progresoDia(fecha)
-    const f = fechaDe(fecha)
+    const r = reg(fecha)
     $('#day-title').textContent = tituloDia()
-    $('#day-sub').textContent = DIAS_NOMBRE[f.getDay()] + ', ' + f.getDate() + ' de ' + MESES[f.getMonth()]
-    $('#day-next').disabled = fecha >= hoyISO()
+    $('#streak-n').textContent = rachaActual()
+    renderSemana()
 
-    dibujarAnillo(prog)
-    $('#ring-pct').textContent = prog.pct + '%'
-    $('#ring-caption').textContent = prog.total ? prog.hechos + ' de ' + prog.total + ' habitos' : 'dia libre'
-    $('#ring-desc').textContent =
-        'Avance del dia: ' + prog.pct + ' por ciento. ' +
-        PILARES.map((p) => p.nombre + ' ' + (prog.porPilar[p.id].hechos) + ' de ' + prog.porPilar[p.id].total).join('. ')
+    $('#hero-done').textContent = prog.hechos
+    $('#hero-total').textContent = prog.total
+    dibujarMedidor(prog)
+    $('#gauge-desc').textContent =
+        'Avance del día: ' + prog.pct + ' por ciento. ' +
+        PILARES.map((p) => p.nombre + ' ' + prog.porPilar[p.id].hechos + ' de ' + prog.porPilar[p.id].total).join('. ')
 
-    $('#ring-legend').innerHTML = PILARES.map((p) => {
+    $('#area-cols').innerHTML = PILARES.map((p) => {
         const c = prog.porPilar[p.id]
+        const pct = c.total ? (c.hechos * 100) / c.total : 0
         return (
-            '<li><span class="swatch" style="background:' + p.color + '"></span>' +
-            '<strong>' + esc(p.nombre) + '</strong> ' + c.hechos + '/' + c.total + '</li>'
+            '<div class="area-col">' +
+            '<span class="nombre">' + esc(p.nombre) + '</span>' +
+            '<span class="cifra">' + c.hechos + ' <small>/ ' + c.total + '</small></span>' +
+            '<span class="mini-track"><span class="mini-fill" style="width:' + pct + '%;background:' + p.color + '"></span></span>' +
+            '</div>'
         )
     }).join('')
 
-    $('#pillars').innerHTML = PILARES.map((p) => {
+    const cerrado = !!r.cerrado
+    const btn = $('#btn-finish')
+    btn.textContent = cerrado ? 'Día terminado · ' + prog.pct + '%' : 'Terminar día'
+    btn.classList.toggle('done', cerrado)
+
+    $('#areas').innerHTML = PILARES.map((p) => {
         const lista = prog.lista.filter((h) => h.pilar === p.id)
         const c = prog.porPilar[p.id]
         const pct = c.total ? Math.round((c.hechos * 100) / c.total) : 0
         const cuerpo = lista.length
             ? lista.map((h) => filaHabito(h, fecha)).join('')
-            : '<div class="habit"><div class="habit-main"><span class="habit-meta">Hoy no hay nada programado en esta area.</span></div></div>'
+            : '<div class="habit"><span class="habit-meta" style="padding-left:2px">Hoy no hay nada programado en esta área.</span></div>'
         return (
-            '<section class="pillar">' +
-            '<div class="pillar-head">' +
-            '<span class="pillar-ico" aria-hidden="true">' + p.icono + '</span>' +
-            '<span class="pillar-name"><strong>' + esc(p.nombre) + '</strong><span>' + esc(p.lema) + '</span></span>' +
-            '<span class="pillar-count">' + c.hechos + '/' + c.total + '</span>' +
-            '</div>' +
-            '<div class="meter"><div class="meter-fill" style="width:' + pct + '%;background:' + p.color + '"></div></div>' +
-            cuerpo +
+            '<section class="card area-card">' +
+            '<div class="area-head">' +
+            '<div class="txt"><h2>' + esc(p.nombre) + '</h2>' +
+            '<p class="area-sum">' + c.hechos + ' de ' + c.total + ' hábitos <span class="punto">·</span> ' + pct + '%</p></div>' +
+            '<span class="area-badge" style="background:' + p.tinte + '" aria-hidden="true">' + p.icono + '</span>' +
+            '</div>' + cuerpo +
+            '<button class="add-row" data-accion="nuevo-habito" data-pilar="' + p.id + '" aria-label="Agregar hábito a ' + esc(p.nombre) + '">+</button>' +
             '</section>'
         )
     }).join('')
 
-    const r = reg(fecha)
     $('#mood').innerHTML = ANIMOS.map(
         (a) =>
             '<button data-accion="animo" data-valor="' + a.valor + '" class="' + (r.animo === a.valor ? 'on' : '') +
@@ -313,7 +360,7 @@ function renderHoy() {
 
 function chipsDias(h, color) {
     return (
-        '<div class="days" aria-label="Dias">' +
+        '<div class="days" aria-label="Días">' +
         DIAS_CORTOS.map((d, i) => {
             const on = h.dias.includes(i)
             return '<span class="' + (on ? 'on' : '') + '"' + (on ? ' style="background:' + color + '"' : '') + '>' + d + '</span>'
@@ -330,6 +377,7 @@ function renderPlanes() {
                   .map(
                       (h) =>
                           '<div class="plan-item' + (h.activo === false ? ' off' : '') + '">' +
+                          '<span class="thumb" style="background:' + p.tinte + '" aria-hidden="true">' + (h.icono || p.icono) + '</span>' +
                           '<div class="habit-main" data-accion="editar-habito" data-id="' + h.id + '" role="button" tabindex="0">' +
                           '<span class="habit-name">' + esc(h.nombre) + '</span>' +
                           '<span class="habit-meta">' +
@@ -340,13 +388,13 @@ function renderPlanes() {
                           '</div>'
                   )
                   .join('')
-            : '<p class="card-sub">Todavia no hay habitos en esta area.</p>'
+            : '<p class="card-sub">Todavía no hay hábitos en esta área.</p>'
         return (
             '<section class="plan-group">' +
             '<div class="plan-group-head">' +
             '<span class="dot" style="background:' + p.color + '"></span>' +
             '<h2>' + esc(p.nombre) + '</h2>' +
-            '<button class="link-btn" data-accion="nuevo-habito" data-pilar="' + p.id + '">+ Habito</button>' +
+            '<button class="link-btn" data-accion="nuevo-habito" data-pilar="' + p.id + '">+ Hábito</button>' +
             '</div>' + items + '</section>'
         )
     }).join('')
@@ -356,7 +404,7 @@ function renderPlanes() {
 
 function renderMetas() {
     if (!estado.metas.length) {
-        $('#metas').innerHTML = '<p class="card-sub">Aun no hay metas. Usa el boton + para crear la primera.</p>'
+        $('#metas').innerHTML = '<p class="card-sub">Aún no hay metas. Usa el botón + para crear la primera.</p>'
         return
     }
     $('#metas').innerHTML = estado.metas
@@ -371,7 +419,7 @@ function renderMetas() {
                         '<button class="check' + (s.hecho ? ' on' : '') + '" data-accion="paso" data-meta="' + m.id + '" data-id="' + s.id + '"' +
                         (s.hecho ? ' style="background:' + p.color + ';border-color:' + p.color + '"' : '') +
                         ' aria-pressed="' + s.hecho + '" aria-label="' + esc(s.texto) + '">&#10003;</button>' +
-                        '<span>' + esc(s.texto) + '</span>' +
+                        '<span class="txt">' + esc(s.texto) + '</span>' +
                         '<button class="mini-btn" data-accion="borrar-paso" data-meta="' + m.id + '" data-id="' + s.id + '" aria-label="Borrar paso">&#10005;</button>' +
                         '</div>'
                 )
@@ -379,12 +427,12 @@ function renderMetas() {
             return (
                 '<section class="card goal">' +
                 '<div class="goal-head">' +
-                '<span class="dot" style="background:' + p.color + ';margin-top:6px"></span>' +
+                '<span class="dot" style="background:' + p.color + ';margin-top:7px"></span>' +
                 '<h3>' + esc(m.nombre) + '</h3>' +
-                '<span class="pillar-count">' + hechos + '/' + m.pasos.length + '</span>' +
+                '<span class="goal-count">' + hechos + '/' + m.pasos.length + '</span>' +
                 '<button class="mini-btn danger" data-accion="borrar-meta" data-id="' + m.id + '" aria-label="Borrar meta">&#10005;</button>' +
                 '</div>' +
-                '<div class="bar-track"><div class="bar-fill" style="width:' + pct + '%;background:' + p.color + '"></div></div>' +
+                '<span class="bar-track"><span class="bar-fill" style="width:' + pct + '%;background:' + p.color + '"></span></span>' +
                 pasos +
                 '<button class="mini-btn" data-accion="nuevo-paso" data-id="' + m.id + '" style="align-self:flex-start">+ Paso</button>' +
                 '</section>'
@@ -416,7 +464,7 @@ function dibujarGrafico(datos) {
     const ancho = (der - izq - hueco * (datos.length - 1)) / datos.length
     let html = ''
 
-    // ejes de referencia, discretos
+    // referencias discretas
     ;[0, 50, 100].forEach((v) => {
         const y = abajo - (v / 100) * alto
         html +=
@@ -429,11 +477,7 @@ function dibujarGrafico(datos) {
         const h = (d.pct / 100) * alto
         const y = abajo - h
         const f = fechaDe(d.dia)
-        const etiqueta = DIAS_CORTOS[f.getDay()]
-        const texto =
-            d.total === 0
-                ? 'sin habitos'
-                : d.pct + '% (' + d.hechos + '/' + d.total + ')'
+        const texto = d.total === 0 ? 'sin hábitos' : d.pct + '% (' + d.hechos + '/' + d.total + ')'
         const titulo = f.getDate() + ' ' + MESES[f.getMonth()].slice(0, 3) + ' - ' + texto
         html += '<g class="bar" tabindex="0" role="listitem" aria-label="' + titulo + '" data-i="' + i + '">'
         if (d.total === 0) {
@@ -441,10 +485,10 @@ function dibujarGrafico(datos) {
         } else if (h < 1.5) {
             html += '<line x1="' + x + '" y1="' + abajo + '" x2="' + (x + ancho) + '" y2="' + abajo + '" stroke="var(--muted)" stroke-width="2"/>'
         } else {
-            html += '<path d="' + barraRedondeada(x, y, ancho, h, 4) + '" fill="var(--carrera)"/>'
+            html += '<path d="' + barraRedondeada(x, y, ancho, h, 4) + '" fill="var(--ink)"/>'
         }
         html += '<rect class="bar-hit" x="' + x + '" y="' + arriba + '" width="' + ancho + '" height="' + (alto + 16) + '"/>'
-        html += '<text x="' + (x + ancho / 2) + '" y="' + (abajo + 14) + '" text-anchor="middle" font-size="9" fill="var(--muted)">' + etiqueta + '</text>'
+        html += '<text x="' + (x + ancho / 2) + '" y="' + (abajo + 14) + '" text-anchor="middle" font-size="9" fill="var(--muted)">' + DIAS_CORTOS[f.getDay()] + '</text>'
         html += '</g>'
     })
     svg.innerHTML = '<g role="list">' + html + '</g>'
@@ -455,7 +499,7 @@ function dibujarGrafico(datos) {
         const f = fechaDe(d.dia)
         tip.innerHTML =
             f.getDate() + ' ' + MESES[f.getMonth()].slice(0, 3) + ' &middot; ' +
-            (d.total === 0 ? 'sin habitos' : '<b>' + d.pct + '%</b> (' + d.hechos + '/' + d.total + ')')
+            (d.total === 0 ? 'sin hábitos' : '<b>' + d.pct + '%</b> (' + d.hechos + '/' + d.total + ')')
         const caja = svg.getBoundingClientRect()
         const escala = caja.width / 320
         const centro = (izq + i * (ancho + hueco) + ancho / 2) * escala
@@ -489,10 +533,10 @@ function renderProgreso() {
     const totalHechos30 = dias30.reduce((a, d) => a + d.hechos, 0)
 
     const tarjetas = [
-        { v: rachaActual(), l: 'dias de racha' },
+        { v: rachaActual(), l: 'días de racha' },
         { v: mejorRacha(), l: 'mejor racha' },
-        { v: promedio7 + '%', l: 'promedio 7 dias' },
-        { v: cumplidos30 + '/' + conHabitos30.length, l: 'dias cumplidos (30)' },
+        { v: promedio7 + '%', l: 'promedio 7 días' },
+        { v: cumplidos30 + '/' + conHabitos30.length, l: 'días cumplidos (30)' },
     ]
     $('#stats').innerHTML = tarjetas
         .map((t) => '<div class="stat"><div class="stat-value">' + t.v + '</div><div class="stat-label">' + t.l + '</div></div>')
@@ -501,7 +545,7 @@ function renderProgreso() {
     dibujarGrafico(dias14)
 
     $('#chart-table').innerHTML =
-        '<table><caption class="sr-only">Cumplimiento diario</caption><thead><tr><th>Dia</th><th class="num">Cumplido</th><th class="num">Habitos</th></tr></thead><tbody>' +
+        '<table><caption class="sr-only">Cumplimiento diario</caption><thead><tr><th>Día</th><th class="num">Cumplido</th><th class="num">Hábitos</th></tr></thead><tbody>' +
         dias14
             .slice()
             .reverse()
@@ -516,23 +560,24 @@ function renderProgreso() {
             .join('') +
         '</tbody></table>'
 
-    $('#by-pillar').innerHTML = PILARES.map((p) => {
-        let hechos = 0
-        let total = 0
-        dias30.forEach((d) => {
-            hechos += d.porPilar[p.id].hechos
-            total += d.porPilar[p.id].total
-        })
-        const pct = total ? Math.round((hechos * 100) / total) : 0
-        return (
-            '<div class="bar-row">' +
-            '<span class="label">' + esc(p.nombre) + '</span>' +
-            '<span class="bar-track"><span class="bar-fill" style="width:' + pct + '%;background:' + p.color + '"></span></span>' +
-            '<span class="value">' + pct + '%</span>' +
-            '</div>'
-        )
-    }).join('') +
-        '<p class="card-sub">' + totalHechos30 + ' habitos completados en los ultimos 30 dias.</p>'
+    $('#by-pillar').innerHTML =
+        PILARES.map((p) => {
+            let hechos = 0
+            let total = 0
+            dias30.forEach((d) => {
+                hechos += d.porPilar[p.id].hechos
+                total += d.porPilar[p.id].total
+            })
+            const pct = total ? Math.round((hechos * 100) / total) : 0
+            return (
+                '<div class="bar-row">' +
+                '<span class="label">' + esc(p.nombre) + '</span>' +
+                '<span class="bar-track"><span class="bar-fill" style="width:' + pct + '%;background:' + p.color + '"></span></span>' +
+                '<span class="value">' + pct + '%</span>' +
+                '</div>'
+            )
+        }).join('') +
+        '<p class="card-sub">' + totalHechos30 + ' hábitos completados en los últimos 30 días.</p>'
 }
 
 /* ---------------- render general ---------------- */
@@ -572,9 +617,9 @@ function formularioHabito(h) {
     const nuevo = !h.id
     return (
         '<div class="field"><label for="f-nombre">Nombre</label>' +
-        '<input id="f-nombre" name="nombre" value="' + esc(h.nombre || '') + '" required maxlength="60" placeholder="Ej: caminar en la manana"></div>' +
+        '<input id="f-nombre" name="nombre" value="' + esc(h.nombre || '') + '" required maxlength="60" placeholder="Ej: caminar en la mañana"></div>' +
         '<div class="field-row">' +
-        '<div class="field"><label for="f-pilar">Area</label><select id="f-pilar" name="pilar">' +
+        '<div class="field"><label for="f-pilar">Área</label><select id="f-pilar" name="pilar">' +
         PILARES.map((p) => '<option value="' + p.id + '"' + (h.pilar === p.id ? ' selected' : '') + '>' + esc(p.nombre) + '</option>').join('') +
         '</select></div>' +
         '<div class="field"><label for="f-tipo">Tipo</label><select id="f-tipo" name="tipo">' +
@@ -583,24 +628,24 @@ function formularioHabito(h) {
         '</select></div></div>' +
         '<div class="field-row" id="f-cantidad"' + (h.tipo === 'cantidad' ? '' : ' style="display:none"') + '>' +
         '<div class="field"><label for="f-meta">Meta</label><input id="f-meta" name="meta" type="number" min="1" step="1" value="' + (h.meta || 1) + '"></div>' +
-        '<div class="field"><label for="f-unidad">Unidad</label><input id="f-unidad" name="unidad" maxlength="12" value="' + esc(h.unidad || '') + '" placeholder="min, paginas, vasos"></div>' +
+        '<div class="field"><label for="f-unidad">Unidad</label><input id="f-unidad" name="unidad" maxlength="12" value="' + esc(h.unidad || '') + '" placeholder="min, páginas, vasos"></div>' +
         '</div>' +
-        '<div class="field"><label>Dias</label><div class="day-picker" id="f-dias">' +
+        '<div class="field"><label>Días</label><div class="day-picker" id="f-dias">' +
         DIAS_CORTOS.map((d, i) => '<button type="button" data-dia="' + i + '" class="' + ((h.dias || []).includes(i) ? 'on' : '') + '">' + d + '</button>').join('') +
         '</div></div>' +
         '<button type="submit" class="btn btn-primary">Guardar</button>' +
-        (nuevo ? '' : '<button type="button" class="btn btn-ghost danger" data-accion="borrar-habito" data-id="' + h.id + '">Borrar habito</button>')
+        (nuevo ? '' : '<button type="button" class="btn btn-ghost danger" data-accion="borrar-habito" data-id="' + h.id + '">Borrar hábito</button>')
     )
 }
 
 function editarHabito(h, pilarPorDefecto) {
     const base = h || { pilar: pilarPorDefecto || PILARES[0].id, tipo: 'check', meta: 1, unidad: '', dias: [1, 2, 3, 4, 5], nombre: '' }
-    abrirModal(h ? 'Editar habito' : 'Nuevo habito', formularioHabito(base), (form) => {
+    abrirModal(h ? 'Editar hábito' : 'Nuevo hábito', formularioHabito(base), (form) => {
         const dias = Array.from($('#f-dias').querySelectorAll('button.on')).map((b) => Number(b.dataset.dia))
         const nombre = form.nombre.value.trim()
         if (!nombre) return false
         if (!dias.length) {
-            alert('Elige al menos un dia de la semana.')
+            alert('Elige al menos un día de la semana.')
             return false
         }
         const datos = {
@@ -625,8 +670,8 @@ function nuevaMeta() {
     abrirModal(
         'Nueva meta',
         '<div class="field"><label for="f-nombre">Nombre de la meta</label>' +
-            '<input id="f-nombre" name="nombre" required maxlength="80" placeholder="Ej: portafolio en linea"></div>' +
-            '<div class="field"><label for="f-pilar">Area</label><select id="f-pilar" name="pilar">' +
+            '<input id="f-nombre" name="nombre" required maxlength="80" placeholder="Ej: portafolio en línea"></div>' +
+            '<div class="field"><label for="f-pilar">Área</label><select id="f-pilar" name="pilar">' +
             PILARES.map((p) => '<option value="' + p.id + '">' + esc(p.nombre) + '</option>').join('') +
             '</select></div>' +
             '<button type="submit" class="btn btn-primary">Crear</button>',
@@ -656,8 +701,7 @@ function cambiarValor(id, delta) {
     const r = regEditable(fecha)
     const actual = r.valores[id] || 0
     if (h.tipo === 'cantidad') {
-        const nuevo = Math.max(0, Math.min(objetivo(h) * 3, actual + delta * paso(h)))
-        r.valores[id] = nuevo
+        r.valores[id] = Math.max(0, Math.min(objetivo(h) * 3, actual + delta * paso(h)))
     } else {
         r.valores[id] = actual >= 1 ? 0 : 1
     }
@@ -719,6 +763,13 @@ document.addEventListener('click', (ev) => {
         return
     }
 
+    const dia = ev.target.closest('.wday')
+    if (dia && !dia.disabled) {
+        fecha = dia.dataset.dia
+        renderHoy()
+        return
+    }
+
     const el = ev.target.closest('[data-accion]')
     if (!el) return
     const accion = el.dataset.accion
@@ -743,7 +794,7 @@ document.addEventListener('click', (ev) => {
         guardar()
         renderPlanes()
     } else if (accion === 'borrar-habito') {
-        if (!confirm('Borrar este habito? Su historial se conserva.')) return
+        if (!confirm('¿Borrar este hábito? Su historial se conserva.')) return
         estado.habitos = estado.habitos.filter((x) => x.id !== id)
         guardar()
         cerrarModal()
@@ -770,7 +821,7 @@ document.addEventListener('click', (ev) => {
             renderMetas()
         }
     } else if (accion === 'borrar-meta') {
-        if (!confirm('Borrar esta meta y sus pasos?')) return
+        if (!confirm('¿Borrar esta meta y sus pasos?')) return
         estado.metas = estado.metas.filter((x) => x.id !== id)
         guardar()
         renderMetas()
@@ -787,13 +838,24 @@ document.addEventListener('keydown', (ev) => {
     el.click()
 })
 
-$('#day-prev').addEventListener('click', () => {
-    fecha = sumarDias(fecha, -1)
+$('#btn-hoy').addEventListener('click', () => {
+    fecha = hoyISO()
+    lunes = lunesDe(fecha)
     renderHoy()
 })
-$('#day-next').addEventListener('click', () => {
-    if (fecha >= hoyISO()) return
-    fecha = sumarDias(fecha, 1)
+$('#week-prev').addEventListener('click', () => {
+    lunes = sumarDias(lunes, -7)
+    renderSemana()
+})
+$('#week-next').addEventListener('click', () => {
+    if (sumarDias(lunes, 7) > hoyISO()) return
+    lunes = sumarDias(lunes, 7)
+    renderSemana()
+})
+$('#btn-finish').addEventListener('click', () => {
+    const r = regEditable(fecha)
+    r.cerrado = !r.cerrado
+    guardar()
     renderHoy()
 })
 
@@ -842,7 +904,7 @@ $('#file-import').addEventListener('change', (ev) => {
     ev.target.value = ''
 })
 $('#btn-reset').addEventListener('click', () => {
-    if (!confirm('Esto borra habitos, metas e historial y vuelve al plan inicial. Continuar?')) return
+    if (!confirm('Esto borra hábitos, metas e historial y vuelve al plan inicial. ¿Continuar?')) return
     estado = semilla()
     guardar()
     render()
